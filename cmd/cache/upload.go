@@ -35,7 +35,7 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return upload.Upload(hashStr, target, folder)
+			return upload.Upload(cmd.Context(), hashStr, target, folder)
 		},
 	}
 	cmd.Flags().String(filesFlag, "", "Files pattern to compute the hash from")

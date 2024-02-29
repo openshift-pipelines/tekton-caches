@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	filesFlag  = "files"
+	filesFlag  = "hashfiles"
 	targetFlag = "target"
 	folderFlag = "folder"
 )
@@ -41,7 +41,7 @@ func fetchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return fetch.Try(hashStr, target, folder)
+			return fetch.Try(cmd.Context(), hashStr, target, folder)
 		},
 	}
 
