@@ -1,4 +1,4 @@
-# tekton-caches
+# tekton-caches [![build-test-publish](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml/badge.svg)](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml)
 
 Tools (and Task/StepAction) to managing within Tekton
 
