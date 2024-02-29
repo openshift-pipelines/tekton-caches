@@ -1,0 +1,87 @@
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'
+
+name: build-test-publish
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+    - name: Set up Go
+      uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+      with:
+        go-version: "1.21"
+    - run: go env
+    - name: go build
+      run: go build -v ./...
+    - name: go test
+      run: go test -v ./...
+
+  # e2e:
+  #   name: e2e tests
+  #   runs-on: ubuntu-latest
+  #   needs: [ build ]
+  # 
+  #   steps:
+  #   - uses: ko-build/setup-ko@v0.6
+  #   - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+  #   - uses: chainguard-dev/actions/setup-kind@main
+  #     with:
+  #       k8s-version: v1.23.x
+  #   - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+  #     with:
+  #       go-version: "1.21"
+  #   - uses: vdemeester/setup-tektoncd@main
+  #     with:
+  #       pipeline: v0.40.x
+  #       pipeline-feature-flags: '{"enable-api-fields": "alpha"}'
+  #   - name: install manual-approval-gate custom task
+  #     run: |
+  #       # FIXME: remove this once >= 0.41.x
+  #       kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.40.2/resolvers.yaml
+  #       ko apply --local -f config/
+        
+  publish:
+    name: publish latest
+    runs-on: ubuntu-latest
+    needs: [ build ]
+
+    # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+      with:
+        go-version: "1.21"
+    - id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}/cache
+        flavor: |
+          latest=${{ github.event_name != 'pull_request' }}
+    - uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/setup-buildx-action@v2
+    - uses: docker/build-push-action@v3
+      with:
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        context: ./images/base
+
+    - uses: ko-build/setup-ko@v0.6
+    - run: |
+        ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/cache
