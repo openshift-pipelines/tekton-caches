@@ -59,7 +59,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
     - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
       with:
         go-version: "1.21"
@@ -74,14 +74,6 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: docker/setup-buildx-action@v2
-    - uses: docker/build-push-action@v3
-      with:
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        context: ./images/base
-
     - uses: ko-build/setup-ko@v0.6
     - run: |
         ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/cache
