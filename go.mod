@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/google/go-containerregistry v0.19.0
+	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.0
 )
 
