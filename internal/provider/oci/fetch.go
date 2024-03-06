@@ -11,17 +11,15 @@ import (
 	"github.com/google/go-containerregistry/pkg/crane"
 )
 
-func Try(ctx context.Context, hash, target, folder string) error {
+func Fetch(ctx context.Context, hash, target, folder string) error {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Trying to fetch oci image %s in %s\n", cacheImageRef, folder)
 
 	// Try to fetch it (if it exists)
 	image, err := crane.Pull(cacheImageRef)
 	if err != nil {
-		// If not, warn and do not fail
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
-		fmt.Fprintf(os.Stderr, "Repository %s doesn't exists or isn't reachable, fetching no cache.\n", cacheImageRef)
-		return nil
+		return err
 	}
 
 	f, err := os.Create(filepath.Join(folder, "cache.tar"))

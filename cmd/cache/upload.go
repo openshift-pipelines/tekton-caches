@@ -1,21 +1,23 @@
 package main
 
 import (
-	"path/filepath"
+	"fmt"
+	"os"
 
+	"github.com/moby/patternmatcher"
 	"github.com/openshift-pipelines/tekton-caches/internal/hash"
 	"github.com/openshift-pipelines/tekton-caches/internal/upload"
 	"github.com/spf13/cobra"
+)
+
+const (
+	targetFlag = "target"
 )
 
 func uploadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "upload",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			files, err := cmd.Flags().GetString(filesFlag)
-			if err != nil {
-				return err
-			}
 			target, err := cmd.Flags().GetString(targetFlag)
 			if err != nil {
 				return err
@@ -24,12 +26,28 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// FIXME error out if empty
-
-			matches, err := filepath.Glob(files)
+			workingdir, err := cmd.Flags().GetString(workingdirFlag)
 			if err != nil {
 				return err
 			}
+			patterns, err := cmd.Flags().GetStringArray(patternsFlag)
+			if err != nil {
+				return err
+			}
+			matches := glob(workingdir, func(s string) bool {
+				m, err := patternmatcher.Matches(s, patterns)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error trying to match files with '%v': %s", patterns, err)
+					return false
+				}
+				return m
+			})
+			if len(matches) == 0 {
+				return fmt.Errorf("Didn't match any files with %v", patterns)
+			} else {
+				fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
+			}
+
 			// TODO: Hash files based of matches
 			hashStr, err := hash.Compute(matches)
 			if err != nil {
@@ -38,9 +56,10 @@ func uploadCmd() *cobra.Command {
 			return upload.Upload(cmd.Context(), hashStr, target, folder)
 		},
 	}
-	cmd.Flags().String(filesFlag, "", "Files pattern to compute the hash from")
-	cmd.Flags().String(targetFlag, "", "Cache oci image target reference")
+	cmd.Flags().StringArray(patternsFlag, []string{}, "Files pattern to compute the hash from")
+	cmd.Flags().String(targetFlag, "", "Cache target reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
+	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
 
 	return cmd
 }

@@ -20,32 +20,49 @@ jobs:
     - run: go env
     - name: go build
       run: go build -v ./...
-    - name: go test
+    - name: go unit test
       run: go test -v ./...
 
-  # e2e:
-  #   name: e2e tests
-  #   runs-on: ubuntu-latest
-  #   needs: [ build ]
-  # 
-  #   steps:
-  #   - uses: ko-build/setup-ko@v0.6
-  #   - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-  #   - uses: chainguard-dev/actions/setup-kind@main
-  #     with:
-  #       k8s-version: v1.23.x
-  #   - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
-  #     with:
-  #       go-version: "1.21"
-  #   - uses: vdemeester/setup-tektoncd@main
-  #     with:
-  #       pipeline: v0.40.x
-  #       pipeline-feature-flags: '{"enable-api-fields": "alpha"}'
-  #   - name: install manual-approval-gate custom task
-  #     run: |
-  #       # FIXME: remove this once >= 0.41.x
-  #       kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.40.2/resolvers.yaml
-  #       ko apply --local -f config/
+  e2e:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    needs: [ build ]
+  
+    steps:
+    - uses: ko-build/setup-ko@v0.6
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1 
+    - uses: azure/setup-helm@v3
+      # instantiate a KinD (Kubernetes in Docker) cluster, installs `kubectl` and configures the
+      # `kubeconfig` to reach the local cluster
+    - uses: helm/kind-action@v1.9.0
+      with:
+        cluster_name: kind
+        wait: 120s
+    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      with:
+        go-version: "1.21.x"
+    - uses: openshift-pipelines/setup-tektoncd@v1
+      with:
+        pipeline_version: v0.56.1
+        feature_flags: '{"enable-step-actions": "true"}'
+    - name: tests
+      run: |
+        kubectl -n registry get deployment
+        kubectl -n registry port-forward deployment/registry 5000:5000 &
+        REGISTRY=registry.registry.svc.cluster.local:32222
+        KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
+        IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
+        
+        ko publish --base-import-paths --tags=$(git rev-parse HEAD) ./cmd/cache
+        sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-fetch.yaml | tee | kubectl apply -f -
+        sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-upload.yaml | tee | kubectl apply -f -
+        kubectl apply -f tests/
+        tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+        tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+        tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+        tkn taskrun list
+        kubectl get taskrun -o yaml
+        # FIXME: fail if something failed
         
   publish:
     name: publish latest
