@@ -31,7 +31,7 @@ jobs:
     steps:
     - uses: ko-build/setup-ko@v0.6
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1 
-    - uses: azure/setup-helm@v3
+    - uses: azure/setup-helm@v4
       # instantiate a KinD (Kubernetes in Docker) cluster, installs `kubectl` and configures the
       # `kubeconfig` to reach the local cluster
     - uses: helm/kind-action@v1.9.0
