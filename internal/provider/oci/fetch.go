@@ -1,3 +1,6 @@
+// Package oci implements the oci provider
+//
+// It handles URI such as: oci://
 package oci
 
 import (
@@ -7,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/codeclysm/extract/v3"
 	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/openshift-pipelines/tekton-caches/internal/cache"
 )
 
 func Fetch(ctx context.Context, hash, target, folder string) error {
@@ -32,17 +35,5 @@ func Fetch(ctx context.Context, hash, target, folder string) error {
 	}
 	f.Close()
 
-	f, err = os.Open(filepath.Join(folder, "cache.tar"))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	err = extract.Archive(ctx, f, folder, nil)
-	if err != nil {
-		return err
-	}
-	if err := os.Remove(filepath.Join(folder, "cache.tar")); err != nil {
-		return err
-	}
-	return nil
+	return cache.Extract(ctx, folder, "cache.tar")
 }
