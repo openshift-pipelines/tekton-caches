@@ -86,7 +86,7 @@ jobs:
         images: ghcr.io/${{ github.repository }}/cache
         flavor: |
           latest=${{ github.event_name != 'pull_request' }}
-    - uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # 3.0.0
+    - uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # 3.1.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
