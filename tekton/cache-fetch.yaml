@@ -31,8 +31,8 @@ spec:
     - name: insecure
       description: |
         Whether to use insecure mode for fetching the cache
-      type: boolean
-      default: false
+      type: string
+      default: "false"
   results: # Any result to "publish" ?
     - name: fetched
       description: |
