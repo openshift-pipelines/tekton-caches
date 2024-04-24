@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-func Upload(ctx context.Context, hash, target, folder string) error {
+func Upload(ctx context.Context, hash, target, folder string, insecure bool) error {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Upload %s content to oci image %s\n", folder, cacheImageRef)
 
@@ -42,7 +42,11 @@ func Upload(ctx context.Context, hash, target, folder string) error {
 		return nil
 	}
 
-	if err := crane.Push(image, cacheImageRef); err != nil {
+	options := []crane.Option{}
+	if insecure {
+		options = append(options, crane.Insecure)
+	}
+	if err := crane.Push(image, cacheImageRef, options...); err != nil {
 		return err
 	}
 
