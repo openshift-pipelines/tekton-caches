@@ -9,7 +9,7 @@ import (
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
 )
 
-func Fetch(ctx context.Context, hash, target, folder string) error {
+func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
 	u, err := url.Parse(target)
 	if err != nil {
 		return err
@@ -17,7 +17,7 @@ func Fetch(ctx context.Context, hash, target, folder string) error {
 	newTarget := strings.TrimPrefix(target, u.Scheme+"://")
 	switch u.Scheme {
 	case "oci":
-		return oci.Fetch(ctx, hash, newTarget, folder)
+		return oci.Fetch(ctx, hash, newTarget, folder, insecure)
 	case "s3":
 		return fmt.Errorf("s3 schema not (yet) supported: %s", target)
 	case "gcs":
