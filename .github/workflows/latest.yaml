@@ -48,12 +48,21 @@ jobs:
       - name: tests
         run: |
           kubectl -n registry get deployment
-          kubectl -n registry port-forward deployment/registry 5000:5000 &
-          REGISTRY=registry.registry.svc.cluster.local:32222
-          KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
-          IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
 
-          ko publish --base-import-paths --tags=$(git rev-parse HEAD) ./cmd/cache
+          i=0
+          while true; do
+            kubectl -n registry port-forward deployment/registry 5000:5000 &
+            REGISTRY=registry.registry.svc.cluster.local:32222
+            KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
+            IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
+
+            ko publish --base-import-paths --tags=$(git rev-parse HEAD) ./cmd/cache
+            [[ $? -eq 0 ]] || break
+            ((i++))
+            killall -9 kubectl
+            nohup kubectl -n registry port-forward deployment/registry 5000:5000 &
+            [[ $i -lt 10 ]] || (echo "Failed to publish image" && exit 1)
+          done
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-fetch.yaml | tee | kubectl apply -f -
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-upload.yaml | tee | kubectl apply -f -
           kubectl apply -f tests/
@@ -67,7 +76,6 @@ jobs:
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn taskrun list
           kubectl get taskrun -o yaml
-          # FIXME: fail if something failed
 
   publish:
     name: publish latest
