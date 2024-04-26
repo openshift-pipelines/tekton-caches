@@ -65,6 +65,16 @@ spec:
       emptyDir: {}
 ```
 
+- you can as well redefine the `buildCommand` which by default do a `go build
+  -v ./` with the `buildCommand` parameter, for example if you want instead to
+  run the tests on a repo with caching:
+
+```shell
+tkn pipeline start pipeline-go --param repo_url=https://github.com/chmouel/gosmee \ 
+  --param revision=main --param registry=docker.io/username \
+  --param=buildCommand="make test" -w name=source,emptyDir=
+```
+
 ## License
 
 [Apache License 2.0](./LICENSE)

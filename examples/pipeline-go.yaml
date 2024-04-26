@@ -11,17 +11,23 @@ spec:
       type: string
     - name: registry
       type: string
+    - name: buildCommand
+      type: string
+      default: go build -v .
   workspaces:
     - name: source
   tasks:
     - displayName: Build go application
-      name: noop-task
+      name: build-task
       workspaces:
         - name: source
           workspace: source
       taskSpec:
         workspaces:
           - name: source
+        params:
+          - name: buildCommand
+            default: $(params.buildCommand)
         steps:
           - name: create-repo
             image: cgr.dev/chainguard/go
@@ -41,7 +47,7 @@ spec:
                 value: $(params.repo_url)
               - name: revision
                 value: $(params.revision)
-          - name: cache-fetch
+          - name: fetch-cache
             ref:
               resolver: http
               params:
@@ -61,12 +67,15 @@ spec:
           - image: cgr.dev/chainguard/go
             workingDir: $(workspaces.source.path)/repo
             name: noop-task
+            env:
+              - name: GOCACHE
+                value: $(workspaces.source.path)/cache/gocache
+              - name: GOMODCACHE
+                value: $(workspaces.source.path)/cache/gomodcache
             script: |
               set -x
               git config --global --add safe.directory $(workspaces.source.path)/repo
-              export GOCACHE=$(workspaces.source.path)/cache/gocache
-              export GOMODCACHE=$(workspaces.source.path)/cache/gomodcache
-              go build -v .
+              $(params.buildCommand)
               du -shk $GOPATH
               du -shk $GOMODCACHE
           - name: cache-upload
