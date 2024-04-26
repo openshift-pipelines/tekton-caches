@@ -4,12 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
 )
 
 func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
+	// check that folder exists or automatically create it
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		if err := os.MkdirAll(folder, 0755); err != nil {
+			return fmt.Errorf("failed to create folder: %w", err)
+		}
+	}
 	u, err := url.Parse(target)
 	if err != nil {
 		return err
