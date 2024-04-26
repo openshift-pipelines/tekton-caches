@@ -47,6 +47,7 @@ jobs:
           feature_flags: '{"enable-step-actions": "true"}'
       - name: tests
         run: |
+          set -euxfo pipefail
           kubectl -n registry get deployment
           kubectl -n registry port-forward deployment/registry 5000:5000 &
           REGISTRY=registry.registry.svc.cluster.local:32222
@@ -57,17 +58,16 @@ jobs:
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-fetch.yaml | tee | kubectl apply -f -
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-upload.yaml | tee | kubectl apply -f -
           kubectl apply -f tests/
-          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app \ 
-                -p gitRevision=main \
-                -p cachePatterns="**.go,**go.sum" \
-                -p cacheURIBase=oci://${REGISTRY}/cache/go \
-                -w name=source,emptyDir= -w name=gocache,emptyDir= \
-                -w name=gomodcache,emptyDir= --showlog
+          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app \
+            -p gitRevision=main \
+            -p cachePatterns="**.go,**go.sum" \
+            -p cacheURIBase=oci://${REGISTRY}/cache/go \
+            -w name=source,emptyDir= -w name=gocache,emptyDir= \
+            -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn taskrun list
           kubectl get taskrun -o yaml
-
   publish:
     name: publish latest
     runs-on: ubuntu-latest
