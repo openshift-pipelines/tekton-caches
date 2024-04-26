@@ -34,6 +34,11 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			insecure, err := cmd.Flags().GetBool(insecureFlag)
+			if err != nil {
+				return err
+			}
 			matches := glob(workingdir, func(s string) bool {
 				m, err := patternmatcher.Matches(s, patterns)
 				if err != nil {
@@ -53,13 +58,15 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return upload.Upload(cmd.Context(), hashStr, target, folder)
+			// TODO: use a struct to pas arguments
+			return upload.Upload(cmd.Context(), hashStr, target, folder, insecure)
 		},
 	}
 	cmd.Flags().StringArray(patternsFlag, []string{}, "Files pattern to compute the hash from")
 	cmd.Flags().String(targetFlag, "", "Cache target reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
+	cmd.Flags().Bool(insecureFlag, false, "Wether to use insecure transport or not to upload to insecure registry")
 
 	return cmd
 }

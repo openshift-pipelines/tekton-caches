@@ -28,6 +28,11 @@ spec:
       description: |
         The working dir from where the files patterns needs to be taken
       type: string
+    - name: insecure
+      description: |
+        Whether to use insecure mode for fetching the cache
+      type: string
+      default: "false"
   results: # Any result to "publish" ?
     - name: fetched
       description: |
@@ -39,6 +44,8 @@ spec:
       value: $(params.cachePath)
     - name: PARAM_WORKINGDIR
       value: $(params.workingdir)
+    - name: PARAM_INSECURE
+      value: $(params.insecure)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
@@ -55,4 +62,5 @@ spec:
     /ko-app/cache upload ${PATTERN_FLAGS} \
                         --target ${PARAM_TARGET} \
                         --folder ${PARAM_CACHE_PATH} \
+                        --insecure ${PARAM_INSECURE} \
                         --workingdir ${PARAM_WORKINGDIR}

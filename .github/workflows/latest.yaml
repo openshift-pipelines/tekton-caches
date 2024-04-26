@@ -75,10 +75,7 @@ jobs:
     needs: [build]
 
     # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
-    permissions:
-      id-token: write
-      packages: write
-      contents: read
+    permissions: write-all
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1

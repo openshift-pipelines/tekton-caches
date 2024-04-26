@@ -18,6 +18,7 @@ const (
 	patternsFlag   = "pattern"
 	sourceFlag     = "source"
 	folderFlag     = "folder"
+	insecureFlag   = "insecure"
 )
 
 func fetchCmd() *cobra.Command {
@@ -59,10 +60,14 @@ func fetchCmd() *cobra.Command {
 				return err
 			}
 
+			insecure, err := cmd.Flags().GetBool(insecureFlag)
+			if err != nil {
+				return err
+			}
 			// FIXME: Wrap the error.
 			// If not, warn and do not fail
 			// fmt.Fprintf(os.Stderr, "Repository %s doesn't exists or isn't reachable, fetching no cache.\n", cacheImageRef)
-			return fetch.Fetch(cmd.Context(), hashStr, target, folder)
+			return fetch.Fetch(cmd.Context(), hashStr, target, folder, insecure)
 		},
 	}
 
@@ -70,6 +75,7 @@ func fetchCmd() *cobra.Command {
 	cmd.Flags().String(sourceFlag, "", "Cache source reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
+	cmd.Flags().Bool(insecureFlag, false, "Wether to use insecure transport or not to upload to insecure registry")
 
 	return cmd
 }
