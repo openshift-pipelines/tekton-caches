@@ -13,7 +13,11 @@ import (
 	"gotest.tools/v3/fs"
 )
 
-var DEFAULT_REG = "oci://127.0.0.1:5000/cache/go"
+const (
+	DEFAULT_REG        = "oci://127.0.0.1:5000/cache/go"
+	goModContent       = `module foo/bar/hello.moto`
+	hashOfGoModContent = "749da1a3a827cde86850743dd2bbf6b65d13497d4b0ecf88d1df7a77ce687f86"
+)
 
 func TestFetch(t *testing.T) {
 	ctx := context.Background()
@@ -25,8 +29,9 @@ func TestFetch(t *testing.T) {
 	assert.ErrorContains(t, Fetch(ctx, "ahash", regTarget+"notfound", tmpdir.Path(), false), "MANIFEST_UNKNOWN: manifest unknown")
 	defer tmpdir.Remove()
 	defer env.ChangeWorkingDir(t, tmpdir.Path())()
-	assert.NilError(t, os.WriteFile(filepath.Join(tmpdir.Path(), "go.mod"), []byte("module foo/bar/hello.moto"), 0o644))
+	assert.NilError(t, os.WriteFile(filepath.Join(tmpdir.Path(), "go.mod"), []byte(goModContent), 0o644))
 	hash, err := hash.Compute([]string{filepath.Join(tmpdir.Path(), "go.mod")})
+	assert.Equal(t, hash, hashOfGoModContent)
 	assert.NilError(t, err)
 	assert.NilError(t, upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true))
 	assert.NilError(t, Fetch(ctx, hash, regTarget, tmpdir.Path(), false))
