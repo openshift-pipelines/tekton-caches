@@ -7,6 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.0
+	gotest.tools/v3 v3.0.3
 )
 
 require (
@@ -15,6 +16,7 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v24.0.9+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5 // indirect
