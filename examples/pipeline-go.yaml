@@ -19,7 +19,7 @@ spec:
       default: ["**go.mod", "**go.sum"]
     - name: image
       type: string
-      default: cgr.dev/chainguard/go
+      default: golang:latest
     - name: force-cache-upload
       type: string
       default: "false"
