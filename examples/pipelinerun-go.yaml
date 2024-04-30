@@ -2,10 +2,10 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: build-go-application-with-caching-run
+  name: pipelinerun-go
 spec:
   pipelineRef:
-    name: build-go-application-with-caching
+    name: pipeline-go
   params:
     - name: repo_url
       value: https://github.com/chmouel/go-helloworld
