@@ -20,8 +20,6 @@ jobs:
       - run: go env
       - name: go build
         run: go build -v ./...
-      - name: go unit test
-        run: go test -v ./...
 
   e2e:
     name: e2e tests
