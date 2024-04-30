@@ -66,7 +66,7 @@ spec:
                 value: $(workspaces.source.path)/repo
           - image: cgr.dev/chainguard/go
             workingDir: $(workspaces.source.path)/repo
-            name: noop-task
+            name: run-go-build
             env:
               - name: GOCACHE
                 value: $(workspaces.source.path)/cache/gocache

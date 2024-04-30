@@ -57,7 +57,7 @@ jobs:
           ko publish --sbom=none --base-import-paths --tags=$(git rev-parse HEAD) ./cmd/cache
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-fetch.yaml | tee | kubectl apply -f -
           sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-upload.yaml | tee | kubectl apply -f -
-          kubectl apply -f tests/
+          kubectl apply -f tests/ -f examples/
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app \
             -p gitRevision=main \
             -p cachePatterns="**.go,**go.sum" \
