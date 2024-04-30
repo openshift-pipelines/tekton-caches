@@ -33,6 +33,11 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
+    - name: force-cache-upload
+      description: |
+        Whether to force the cache upload even if it was fetched previously
+      type: string
+      default: "false"
   env:
     - name: PARAM_TARGET
       value: $(params.target)
@@ -42,14 +47,17 @@ spec:
       value: $(params.workingdir)
     - name: PARAM_INSECURE
       value: $(params.insecure)
-    - name: CACHE_FETCHED
-      value: $(steps.fetch-cache.results.fetched)
+    - name: RESULT_CACHE_FETCHED
+      value: $(steps.cache-fetch.results.fetched)
+    - name: PARAM_FORCE_CACHE_UPLOAD
+      value: $(params.force-cache-upload)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
   script: |
     #!/usr/bin/env sh
-    if [[ ${CACHE_FETCHED} == "true" ]]; then
+    set -x
+    if [[ ${PARAM_FORCE_CACHE_UPLOAD} == "false" && ${RESULT_CACHE_FETCHED} == "true" ]]; then
       echo "no need to upload cache"
       exit 0
     fi

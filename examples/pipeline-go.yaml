@@ -20,6 +20,9 @@ spec:
     - name: image
       type: string
       default: cgr.dev/chainguard/go
+    - name: force-cache-upload
+      type: string
+      default: "false"
   workspaces:
     - name: source
   tasks:
@@ -57,7 +60,7 @@ spec:
                 value: $(params.repo_url)
               - name: revision
                 value: $(params.revision)
-          - name: fetch-cache
+          - name: cache-fetch
             ref:
               resolver: http
               params:
@@ -100,3 +103,5 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
+              - name: force-cache-upload
+                value: $(params.force-cache-upload)
