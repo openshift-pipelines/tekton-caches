@@ -13,6 +13,8 @@ spec:
       value: main
     - name: registry
       value: registry.civuole.local/cache
+    - name: image
+      value: cgr.dev/chainguard/go
   workspaces:
     - name: source
       emptyDir: {}

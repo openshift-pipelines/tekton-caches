@@ -14,6 +14,12 @@ spec:
     - name: buildCommand
       type: string
       default: go build -v .
+    - name: cachePatterns
+      type: array
+      default: ["**go.mod", "**go.sum"]
+    - name: image
+      type: string
+      default: cgr.dev/chainguard/go
   workspaces:
     - name: source
   tasks:
@@ -28,9 +34,13 @@ spec:
         params:
           - name: buildCommand
             default: $(params.buildCommand)
+          - name: cachePatterns
+            default: $(params.cachePatterns)
+          - name: image
+            default: $(params.image)
         steps:
           - name: create-repo
-            image: cgr.dev/chainguard/go
+            image: $(params.image)
             script: |
               mkdir -p $(workspaces.source.path)/repo
               chmod 777 $(workspaces.source.path)/repo
@@ -55,16 +65,14 @@ spec:
                   value: https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
             params:
               - name: patterns
-                value:
-                  - "**.go"
-                  - "**go.sum"
+                value: $(params.cachePatterns)
               - name: source
                 value: oci://$(params.registry)/cache-go:{{hash}}
               - name: cachePath
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
-          - image: cgr.dev/chainguard/go
+          - image: $(params.image)
             workingDir: $(workspaces.source.path)/repo
             name: run-go-build
             env:
@@ -76,8 +84,7 @@ spec:
               set -x
               git config --global --add safe.directory $(workspaces.source.path)/repo
               $(params.buildCommand)
-              du -shk $GOPATH
-              du -shk $GOMODCACHE
+              echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"
           - name: cache-upload
             ref:
               resolver: http
@@ -86,9 +93,7 @@ spec:
                   value: https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-upload.yaml
             params:
               - name: patterns
-                value:
-                  - "**.go"
-                  - "**go.sum"
+                value: $(params.cachePatterns)
               - name: target
                 value: oci://$(params.registry)/cache-go:{{hash}}
               - name: cachePath
