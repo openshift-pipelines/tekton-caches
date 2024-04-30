@@ -40,7 +40,7 @@ kubectl create -f pipeline-go.yaml
 Start it with the tkn cli (change the value as needed):
 
 ```shell
-tkn pipeline start pipeline-go --param repo_url=https://github.com/vdemeester/go-helloworld-app --param revision=main --param registry=docker.io/username -w name=source,emptyDir=
+tkn pipeline start pipeline-go --param repo_url=https://github.com/vdemeester/go-helloworld-app --param revision=main --param registry=docker.io/username -w name=source,emptyDir= --use-param-defaults
 ```
 
 or with a PipelineRun yaml object:
@@ -72,8 +72,12 @@ spec:
 ```shell
 tkn pipeline start pipeline-go --param repo_url=https://github.com/chmouel/gosmee \ 
   --param revision=main --param registry=docker.io/username \
-  --param=buildCommand="make test" -w name=source,emptyDir=
+  --param=buildCommand="make test" -w name=source,emptyDir= --use-param-defaults --showlog
 ```
+
+- You can as well force the upload of the cache with param `force-cache-upload=true` (default: false)
+- You can provide your own image with the param `image` (default to the latest docker.io `golang` image)
+- You can provide your own patterns for the hash to computer with the `cachePatterns` array parameter (default to `go.mod,go.sum`)
 
 ## License
 
