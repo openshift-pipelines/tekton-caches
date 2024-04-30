@@ -33,10 +33,6 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
-  results: # Any result to "publish" ?
-    - name: fetched
-      description: |
-        Whether a cache was fetched or not (true/false). This step won't fail if it didn't manage to fetch cache. This results allows the next step to act whether something was fetched or not.
   env:
     - name: PARAM_TARGET
       value: $(params.target)
@@ -46,11 +42,17 @@ spec:
       value: $(params.workingdir)
     - name: PARAM_INSECURE
       value: $(params.insecure)
+    - name: CACHE_FETCHED
+      value: $(steps.fetch-cache.results.fetched)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
   script: |
-    #!/bin/sh
+    #!/usr/bin/env sh
+    if [[ ${CACHE_FETCHED} == "true" ]]; then
+      echo "no need to upload cache"
+      exit 0
+    fi
 
     PATTERN_FLAGS=""
     echo "Patterns: $*"
