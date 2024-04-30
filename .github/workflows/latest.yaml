@@ -50,6 +50,9 @@ jobs:
           set -euxfo pipefail
           kubectl -n registry get deployment
           kubectl -n registry port-forward deployment/registry 5000:5000 &
+
+          make test
+
           REGISTRY=registry.registry.svc.cluster.local:32222
           KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
           IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
