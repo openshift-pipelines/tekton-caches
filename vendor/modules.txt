@@ -127,8 +127,8 @@ golang.org/x/sys/unix
 golang.org/x/sys/windows
 # gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 ## explicit
-# gotest.tools/v3 v3.0.3
-## explicit; go 1.11
+# gotest.tools/v3 v3.5.1
+## explicit; go 1.17
 gotest.tools/v3/assert
 gotest.tools/v3/assert/cmp
 gotest.tools/v3/env
