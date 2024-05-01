@@ -7,7 +7,7 @@ require (
 	github.com/google/go-containerregistry v0.19.1
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.0
-	gotest.tools/v3 v3.0.3
+	gotest.tools/v3 v3.5.1
 )
 
 require (
