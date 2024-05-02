@@ -45,7 +45,6 @@ tkn pipeline start pipeline-go --param repo_url=https://github.com/vdemeester/go
 
 or with a PipelineRun yaml object:
 
-```shell
 ```yaml
 kind: PipelineRun
 metadata:
