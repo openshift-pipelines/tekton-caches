@@ -28,7 +28,7 @@ func main() {
 	defer stop()
 	cache := rootCmd()
 	if err := cache.ExecuteContext(ctx); err != nil {
-		os.Exit(1)
+		os.Exit(1) //nolint:gocritic
 	}
 }
 

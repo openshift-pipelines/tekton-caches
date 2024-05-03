@@ -17,7 +17,7 @@ const (
 func uploadCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "upload",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			target, err := cmd.Flags().GetString(targetFlag)
 			if err != nil {
 				return err
@@ -48,10 +48,9 @@ func uploadCmd() *cobra.Command {
 				return m
 			})
 			if len(matches) == 0 {
-				return fmt.Errorf("Didn't match any files with %v", patterns)
-			} else {
-				fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
+				return fmt.Errorf("didn't match any files with %v", patterns)
 			}
+			fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
 
 			// TODO: Hash files based of matches
 			hashStr, err := hash.Compute(matches)

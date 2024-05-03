@@ -24,7 +24,7 @@ const (
 func fetchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "fetch",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			target, err := cmd.Flags().GetString(sourceFlag)
 			if err != nil {
 				return err
@@ -50,10 +50,9 @@ func fetchCmd() *cobra.Command {
 				return m
 			})
 			if len(matches) == 0 {
-				return fmt.Errorf("Didn't match any files with %v", patterns)
-			} else {
-				fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
+				return fmt.Errorf("didn't match any files with %v", patterns)
 			}
+			fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
 			// TODO: Hash files based of matches
 			hashStr, err := hash.Compute(matches)
 			if err != nil {
@@ -82,11 +81,13 @@ func fetchCmd() *cobra.Command {
 
 func glob(root string, fn func(string) bool) []string {
 	var files []string
-	filepath.WalkDir(root, func(s string, d fs.DirEntry, e error) error {
+	if err := filepath.WalkDir(root, func(s string, _ fs.DirEntry, _ error) error {
 		if fn(s) {
 			files = append(files, s)
 		}
 		return nil
-	})
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "error walking the path %q: %v\n", root, err)
+	}
 	return files
 }
