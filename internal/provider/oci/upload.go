@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-func Upload(ctx context.Context, hash, target, folder string, insecure bool) error {
+func Upload(_ context.Context, hash, target, folder string, insecure bool) error {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Upload %s content to oci image %s\n", folder, cacheImageRef)
 

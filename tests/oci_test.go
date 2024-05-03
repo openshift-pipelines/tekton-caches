@@ -17,14 +17,14 @@ import (
 )
 
 const (
-	DEFAULT_REG        = "oci://127.0.0.1:5000/cache/go"
+	defaultReg         = "oci://127.0.0.1:5000/cache/go"
 	goModContent       = `module foo/bar/hello.moto`
 	hashOfGoModContent = "749da1a3a827cde86850743dd2bbf6b65d13497d4b0ecf88d1df7a77ce687f86"
 )
 
 func TestOCIUpload(t *testing.T) {
 	ctx := context.Background()
-	regTarget := DEFAULT_REG
+	regTarget := defaultReg
 	if os.Getenv("TARGET_REGISTRY") != "" {
 		regTarget = os.Getenv("TARGET_REGISTRY")
 	}
@@ -38,5 +38,5 @@ func TestOCIUpload(t *testing.T) {
 	assert.NilError(t, err)
 	assert.NilError(t, upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true))
 	assert.NilError(t, fetch.Fetch(ctx, hash, regTarget, tmpdir.Path(), false))
-	assert.NilError(t, fetch.Fetch(ctx, "unknown", regTarget, tmpdir.Path(), false)) // should not error on unkown hash
+	assert.NilError(t, fetch.Fetch(ctx, "unknown", regTarget, tmpdir.Path(), false)) // should not error on unknown hash
 }
