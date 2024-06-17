@@ -6,7 +6,7 @@ require (
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/google/go-containerregistry v0.19.1
 	github.com/moby/patternmatcher v0.6.0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	gotest.tools/v3 v3.5.1
 )
 
