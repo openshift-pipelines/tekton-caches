@@ -84,12 +84,14 @@ jobs:
           kubectl apply -f tests/ -f examples/
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app \
             -p gitRevision=main \
-            -p eachePatterns="**.go,**go.sum" \
+            -p cachePatterns="**.go,**go.sum" \
             -p cacheURIBase=oci://${REGISTRY}/cache/go \
             -w name=source,emptyDir= -w name=gocache,emptyDir= \
             -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+          tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn taskrun list
           kubectl get taskrun -o yaml
 
