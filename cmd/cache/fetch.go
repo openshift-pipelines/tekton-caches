@@ -8,6 +8,7 @@ import (
 
 	"github.com/moby/patternmatcher"
 	"github.com/openshift-pipelines/tekton-caches/internal/fetch"
+	"github.com/openshift-pipelines/tekton-caches/internal/flags"
 	"github.com/openshift-pipelines/tekton-caches/internal/hash"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,6 @@ import (
 const (
 	workingdirFlag = "workingdir"
 	filesFlag      = "hashfiles"
-	patternsFlag   = "pattern"
 	sourceFlag     = "source"
 	folderFlag     = "folder"
 	insecureFlag   = "insecure"
@@ -37,7 +37,7 @@ func fetchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			patterns, err := cmd.Flags().GetStringArray(patternsFlag)
+			patterns, err := flags.Patterns(cmd, workingdir)
 			if err != nil {
 				return err
 			}
@@ -70,7 +70,7 @@ func fetchCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringArray(patternsFlag, []string{}, "Files pattern to compute the hash from")
+	cmd.Flags().StringArray(flags.PatternsFlag, []string{}, "Files pattern to compute the hash from")
 	cmd.Flags().String(sourceFlag, "", "Cache source reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")

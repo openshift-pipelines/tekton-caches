@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/moby/patternmatcher"
+	"github.com/openshift-pipelines/tekton-caches/internal/flags"
 	"github.com/openshift-pipelines/tekton-caches/internal/hash"
 	"github.com/openshift-pipelines/tekton-caches/internal/upload"
 	"github.com/spf13/cobra"
@@ -30,7 +31,8 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			patterns, err := cmd.Flags().GetStringArray(patternsFlag)
+
+			patterns, err := flags.Patterns(cmd, workingdir)
 			if err != nil {
 				return err
 			}
@@ -61,7 +63,7 @@ func uploadCmd() *cobra.Command {
 			return upload.Upload(cmd.Context(), hashStr, target, folder, insecure)
 		},
 	}
-	cmd.Flags().StringArray(patternsFlag, []string{}, "Files pattern to compute the hash from")
+	cmd.Flags().StringArray(flags.PatternsFlag, []string{}, "Files pattern to compute the hash from")
 	cmd.Flags().String(targetFlag, "", "Cache target reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
