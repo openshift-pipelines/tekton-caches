@@ -5,6 +5,13 @@ on:
     branches: [main]
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
+        required: false
+        default: false
 
 name: build-test-publish
 
@@ -48,13 +55,23 @@ jobs:
         with:
           pipeline_version: v0.56.1
           feature_flags: '{"enable-step-actions": "true"}'
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        with:
+          limit-access-to-actor: true
+          detached: true
+
       - name: tests
+        env:
+          auth_token: ${{ secrets.OSP_PAC_GITHUB_TOKEN }}
         run: |
           set -euxfo pipefail
           REGISTRY=registry.registry.svc.cluster.local:32222
           KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
           IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
-
+          echo "${auth_token}" | ko login https://ghcr.io --username osp-pac --password-stdin
           kubectl -n registry get deployment
           kubectl -n registry port-forward deployment/registry 5000:5000 &
 
@@ -74,6 +91,7 @@ jobs:
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn taskrun list
           kubectl get taskrun -o yaml
+
   publish:
     name: publish latest
     runs-on: ubuntu-latest
