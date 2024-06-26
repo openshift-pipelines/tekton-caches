@@ -65,13 +65,14 @@ jobs:
 
       - name: tests
         env:
-          auth_token: ${{ secrets.OSP_PAC_GITHUB_TOKEN }}
+          OSP_PAC_GITHUB_TOKEN: ${{ secrets.OSP_PAC_GITHUB_TOKEN }}
+          OSP_PAC_USERNAME: os-pac
         run: |
           set -euxfo pipefail
           REGISTRY=registry.registry.svc.cluster.local:32222
           KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
           IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
-          echo "${auth_token}" | ko login https://ghcr.io --username osp-pac --password-stdin
+          echo "${OSP_PAC_GITHUB_TOKEN}" | ko login ghcr.io --username ${OSP_PAC_USERNAME} --password-stdin
           kubectl -n registry get deployment
           kubectl -n registry port-forward deployment/registry 5000:5000 &
 
