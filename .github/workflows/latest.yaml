@@ -1,8 +1,11 @@
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: ["**"]
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
@@ -18,12 +21,13 @@ name: build-test-publish
 jobs:
   go:
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Set up Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version: "1.21"
+          go-version: "1.22"
       - run: go env
       - name: go build
         run: go build -v ./...
@@ -37,24 +41,17 @@ jobs:
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
+    env:
+        KUBECONFIG: /home/runner/.kube/config.kind
+    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     needs: [go]
     steps:
       - uses: ko-build/setup-ko@v0.7
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: azure/setup-helm@v4
-        # instantiate a KinD (Kubernetes in Docker) cluster, installs `kubectl` and configures the
-        # `kubeconfig` to reach the local cluster
-      - uses: helm/kind-action@v1.10.0
-        with:
-          cluster_name: kind
-          wait: 120s
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version: "1.21.x"
-      - uses: openshift-pipelines/setup-tektoncd@v1
-        with:
-          pipeline_version: v0.56.1
-          feature_flags: '{"enable-step-actions": "true"}'
+          go-version: "1.22"
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
@@ -63,18 +60,23 @@ jobs:
           limit-access-to-actor: true
           detached: true
 
-      - name: tests
-        env:
-          OSP_PAC_GITHUB_TOKEN: ${{ secrets.OSP_PAC_GITHUB_TOKEN }}
-          OSP_PAC_USERNAME: os-pac
+      - name: Install kind
         run: |
           set -euxfo pipefail
+          ./hack/kind-install.sh
+
+      - uses: tektoncd/actions/setup-tektoncd@main
+        with:
+          pipeline_version: v0.61.1
+          feature_flags: '{"enable-step-actions": "true"}'
+          setup_registry: false      
+      - name: tests
+        run: |
+          set -euxfo pipefail
+
           REGISTRY=registry.registry.svc.cluster.local:32222
-          KO_DOCKER_REPO=ghcr.io/openshift-pipelines/tekton-caches
+          KO_DOCKER_REPO=localhost:5000/tekton-caches
           IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
-          echo "${OSP_PAC_GITHUB_TOKEN}" | ko login ghcr.io --username ${OSP_PAC_USERNAME} --password-stdin
-          kubectl -n registry get deployment
-          kubectl -n registry port-forward deployment/registry 5000:5000 &
 
           make e2e
 
@@ -90,14 +92,15 @@ jobs:
             -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+          tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
+          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
           tkn taskrun list
           kubectl get taskrun -o yaml
 
   publish:
     name: publish latest
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     needs: [go]
 
     # https://docs.github.com/en/actions/reference/authentication-in-a-workflow
@@ -107,7 +110,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version: "1.21"
+          go-version: "1.22"
       - id: meta
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # 5.5.1
         with:

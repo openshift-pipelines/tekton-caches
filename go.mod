@@ -1,6 +1,6 @@
 module github.com/openshift-pipelines/tekton-caches
 
-go 1.21
+go 1.22
 
 require (
 	github.com/codeclysm/extract/v3 v3.1.1

@@ -33,6 +33,11 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
+    - name: fetched
+      description: |
+        Wether cache was fetched or not previously
+      type: string
+      default: "false"
     - name: force-cache-upload
       description: |
         Whether to force the cache upload even if it was fetched previously
@@ -48,7 +53,7 @@ spec:
     - name: PARAM_INSECURE
       value: $(params.insecure)
     - name: RESULT_CACHE_FETCHED
-      value: $(steps.cache-fetch.results.fetched)
+      value: $(params.fetched)
     - name: PARAM_FORCE_CACHE_UPLOAD
       value: $(params.force-cache-upload)
   # FIXME: use a released version once something is released :)
