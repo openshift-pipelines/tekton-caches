@@ -15,6 +15,7 @@ spec:
       default: "main"
     - name: cachePatterns
       type: array
+      default: []
     - name: cacheURIBase
   steps:
   - name: git-clone
