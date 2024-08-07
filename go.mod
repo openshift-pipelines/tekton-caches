@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/codeclysm/extract/v3 v3.1.1
-	github.com/google/go-containerregistry v0.20.1
+	github.com/google/go-containerregistry v0.20.2
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.1
 	gotest.tools/v3 v3.5.1
@@ -12,9 +12,8 @@ require (
 
 require (
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
-	github.com/docker/cli v24.0.0+incompatible // indirect
+	github.com/docker/cli v27.1.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
-	github.com/docker/docker v26.1.4+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
