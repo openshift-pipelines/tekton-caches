@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/openshift-pipelines/tekton-caches/internal/provider/gcs"
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
 )
 
@@ -27,8 +28,8 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 		return oci.Fetch(ctx, hash, newTarget, folder, insecure)
 	case "s3":
 		return fmt.Errorf("s3 schema not (yet) supported: %s", target)
-	case "gcs":
-		return fmt.Errorf("gcs schema not (yet) supported: %s", target)
+	case "gs":
+		return gcs.Fetch(ctx, hash, newTarget, folder)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}
