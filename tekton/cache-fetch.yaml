@@ -33,6 +33,11 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
+    - name: googleCredentialsPath
+      description: |
+        The path where to find the google credentials. If left empty, it is ignored.
+      type: string
+      default: ""
   results: # Any result to "publish" ?
     - name: fetched
       description: |
@@ -46,6 +51,8 @@ spec:
       value: $(params.workingdir)
     - name: PARAM_INSECURE
       value: $(params.insecure)
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: $(params.googleCredentialsPath)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
