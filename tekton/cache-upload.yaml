@@ -43,6 +43,11 @@ spec:
         Whether to force the cache upload even if it was fetched previously
       type: string
       default: "false"
+    - name: googleCredentialsPath
+      description: |
+        The path where to find the google credentials. If left empty, it is ignored.
+      type: string
+      default: ""
   env:
     - name: PARAM_TARGET
       value: $(params.target)
@@ -56,6 +61,8 @@ spec:
       value: $(params.fetched)
     - name: PARAM_FORCE_CACHE_UPLOAD
       value: $(params.force-cache-upload)
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: $(params.googleCredentialsPath)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
