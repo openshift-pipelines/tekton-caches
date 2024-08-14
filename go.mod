@@ -9,13 +9,13 @@ require (
 	github.com/google/go-containerregistry v0.20.2
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.1
-	google.golang.org/api v0.191.0
+	google.golang.org/api v0.192.0
 	gotest.tools/v3 v3.5.1
 )
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
-	cloud.google.com/go/auth v0.7.3 // indirect
+	cloud.google.com/go/auth v0.8.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.3 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/iam v1.1.12 // indirect
