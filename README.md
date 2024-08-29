@@ -95,31 +95,32 @@ spec:
     value: gcs-sa.json
   taskSpec:
     params:
-	- name: serviceAccountName
-	  type: string
-	  default: ""
+    - name: serviceAccountName
+      type: string
+      default: ""
     workspaces:
-	- name: source
-	- name: google-credentials
-	  optional: true
+    - name: source
+    - name: google-credentials
+      optional: true
     steps:
-	- # […] git clone, …
-	- name: cache-fetch
-	  ref:
-	    name: cache-fetch
-		# or using http resolver with https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
+    - # […] git clone, …
+    - name: cache-fetch
+      ref:
+        name: cache-fetch
+        # or using http resolver with https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
       params:
-	  - name: patterns
-	    value: ["go.mod", "go.sum"]
-	  - name: source
-	    value: gs://my-bucket/some/folder
-	  - name: cachePath
-	    value: $(workspace.source.path)/cache
-	  - name: workingdir
-	    value: $(worksoaces.source.path)/repo
-	  - name: googleCredentialsPath
-	    value: $(workspace.google-credentials.path)/$(params.serviceAccountName)
-	- # […]
+      - name: patterns
+        value: ["go.mod", "go.sum"]
+      - name: source
+        value: gs://my-bucket/some/folder
+      - name: cachePath
+        value: $(workspace.source.path)/cache
+      - name: workingdir
+        value: $(worksoaces.source.path)/repo
+      - name: googleCredentialsPath
+        value: $(workspace.google-credentials.path)/$(params.serviceAccountName)
+    - # […] something else like go build
+    - # […] and then same thing with cache-upload
   workspaces:
     - name: source
       emptyDir: {}
