@@ -102,6 +102,9 @@ spec:
     - name: source
     - name: google-credentials
       optional: true
+    - name: bound-sa-token
+      mountPath: /var/run/secrets/openshift/serviceaccount
+      optional: true
     steps:
     - # […] git clone, …
     - name: cache-fetch
@@ -127,7 +130,17 @@ spec:
     - name: google-credentials
       secret:
        secretName: gcs-secret
+    - name: bound-sa-token
+      projected:
+        sources:
+          - serviceAccountToken:
+              audience: openshift
+              expirationSeconds: 3600
+              path: token
+        defaultMode: 420
 ```
+`bound-sa-token` workspace isn't required if Workload Identity federation isn't setup. Here we assumed an OIDC is configured in OpenShift. 
+
 
 ## License
 
