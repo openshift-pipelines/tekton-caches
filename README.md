@@ -78,6 +78,56 @@ tkn pipeline start pipeline-go --param repo_url=https://github.com/chmouel/gosme
 - You can provide your own image with the param `image` (default to the latest docker.io `golang` image)
 - You can provide your own patterns for the hash to computer with the `cachePatterns` array parameter (default to `go.mod,go.sum`)
 
+## Using with Google Storage as a backend
+
+In order to use the `StepAction` with GCS, the parameter `googleCredentialsPath` needs to be specified. It should point to the google service account json file — which usually comes from a secret.
+
+For example, let's assume a secret name `gcs-secret` is populated with the content of the google service account, key `gcs-sa.json` (a json file, be it with or without support for Google Workload Identity). One could use a `workspace` or a `volume` to mount that secret somewhere and set the path to the `StepAction`.
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: my-taskrun-
+spec:
+  params:
+  - name: serviceAccountName
+    value: gcs-sa.json
+  taskSpec:
+    params:
+	- name: serviceAccountName
+	  type: string
+	  default: ""
+    workspaces:
+	- name: source
+	- name: google-credentials
+	  optional: true
+    steps:
+	- # […] git clone, …
+	- name: cache-fetch
+	  ref:
+	    name: cache-fetch
+		# or using http resolver with https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
+      params:
+	  - name: patterns
+	    value: ["go.mod", "go.sum"]
+	  - name: source
+	    value: gs://my-bucket/some/folder
+	  - name: cachePath
+	    value: $(workspace.source.path)/cache
+	  - name: workingdir
+	    value: $(worksoaces.source.path)/repo
+	  - name: googleCredentialsPath
+	    value: $(workspace.google-credentials.path)/$(params.serviceAccountName)
+	- # […]
+  workspaces:
+    - name: source
+      emptyDir: {}
+    - name: google-credentials
+      secret:
+       secretName: gcs-secret
+```
+
 ## License
 
 [Apache License 2.0](./LICENSE)
