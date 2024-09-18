@@ -25,6 +25,7 @@ spec:
       default: "false"
   workspaces:
     - name: source
+    - name: docker
   tasks:
     - displayName: Build go application
       name: build-task
@@ -75,9 +76,11 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
-          - image: $(params.image)
+              - name: docker-config
+                value: $(workspaces.docker.path)
+          - name: run-go-build
             workingDir: $(workspaces.source.path)/repo
-            name: run-go-build
+            image: $(params.image)
             env:
               - name: GOCACHE
                 value: $(workspaces.source.path)/cache/gocache
@@ -103,5 +106,7 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
+              - name: docker-config
+                value: $(workspaces.docker.path)
               - name: force-cache-upload
                 value: $(params.force-cache-upload)
