@@ -21,8 +21,5 @@ spec:
     - name: image
       value: golang:1.21
   workspaces:
-    - name: docker
-      secret:
-        secretName: regcred
     - name: source
       emptyDir: {}

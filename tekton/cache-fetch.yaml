@@ -38,11 +38,6 @@ spec:
         The path where to find the google credentials. If left empty, it is ignored.
       type: string
       default: ""
-    - name: docker-config
-      description: |
-        The path where to find the docker config.json file. If left empty, it is ignored.
-      type: string
-      default: "/workspace/docker"
   results: # Any result to "publish" ?
     - name: fetched
       description: |
@@ -58,9 +53,6 @@ spec:
       value: $(params.insecure)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
-    - name: DOCKER_CONFIG
-      value: $(params.docker-config)
-
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
