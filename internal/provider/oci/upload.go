@@ -16,6 +16,11 @@ import (
 )
 
 func Upload(_ context.Context, hash, target, folder string, insecure bool) error {
+	credStore := os.Getenv("CRED_STORE")
+	if credStore != "" {
+		os.Setenv("DOCKER_CONFIG", os.Getenv("CRED_STORE"))
+	}
+	fmt.Println("DOCKER_CONFIG : ", os.Getenv("DOCKER_CONFIG"))
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Upload %s content to oci image %s\n", folder, cacheImageRef)
 
