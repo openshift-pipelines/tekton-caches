@@ -48,6 +48,11 @@ spec:
         The path where to find the google credentials. If left empty, it is ignored.
       type: string
       default: ""
+    - name: cred-store
+      description: |
+        The path where to find the creds to upload cache files . If left empty, it is ignored.
+      type: string
+      default: ""
   env:
     - name: PARAM_TARGET
       value: $(params.target)
@@ -63,8 +68,11 @@ spec:
       value: $(params.force-cache-upload)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
+    - name: CRED_STORE
+      value: $(params.cred-store)
   # FIXME: use a released version once something is released :)
-  image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
+  image: ko://github.com/openshift-pipelines/tekton-caches/cmd/cache
+#  image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
   script: |
     #!/usr/bin/env sh

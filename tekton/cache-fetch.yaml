@@ -38,6 +38,11 @@ spec:
         The path where to find the google credentials. If left empty, it is ignored.
       type: string
       default: ""
+    - name: cred-store
+      description: |
+        The path where to find the creds to download cache files . If left empty, it is ignored.
+      type: string
+      default: ""
   results: # Any result to "publish" ?
     - name: fetched
       description: |
@@ -53,6 +58,9 @@ spec:
       value: $(params.insecure)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
+    - name: CRED_STORE
+      value: $(params.cred-store)
+
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
