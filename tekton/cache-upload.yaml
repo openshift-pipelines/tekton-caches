@@ -71,7 +71,8 @@ spec:
     - name: CRED_STORE
       value: $(params.cred-store)
   # FIXME: use a released version once something is released :)
-  image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
+  image: ko://github.com/openshift-pipelines/tekton-caches/cmd/cache
+#  image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
   script: |
     #!/usr/bin/env sh
