@@ -7,7 +7,7 @@ require (
 	github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher v0.0.0-20240628152042-7b3987f0b238
 	github.com/aws/aws-sdk-go-v2 v1.31.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.38
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.63.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.63.3
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/google/go-containerregistry v0.20.2
 	github.com/moby/patternmatcher v0.6.0
