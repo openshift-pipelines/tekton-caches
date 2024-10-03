@@ -27,6 +27,11 @@ lint-go: ## runs go linter on all go files
 							--max-same-issues=0 \
 							--timeout $(TIMEOUT_UNIT)
 
+unit: unit-tests
+unit-tests: ## runs unit tests
+	@echo "Running Unit tests..."
+	go test ./...
+
 .PHONY: fumpt ## formats the GO code with gofumpt(excludes vendors dir)
 fumpt:
 	@find internal cmd tests -name '*.go'|xargs -P4 $(GOFUMPT) -w -extra

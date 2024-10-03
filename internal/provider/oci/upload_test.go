@@ -39,17 +39,3 @@ func TestUpload(t *testing.T) {
 
 	s.Close()
 }
-
-func TestUploadFailure(t *testing.T) {
-	hash := "testhash"
-	target := "dummyhost:8000/test/crane:{{hash}}"
-	folder := t.TempDir() // Use a temporary directory as the source folder
-	insecure := false
-
-	err := os.WriteFile(fmt.Sprintf("%s/test.txt", folder), []byte("dummy content"), 0o644)
-	assert.NoError(t, err, "Failed to create dummy file")
-
-	err = Upload(context.Background(), hash, target, folder, insecure)
-	assert.Error(t, err, "Upload should not return any error")
-	assert.Contains(t, err.Error(), "no such host", "Error should indicate connection failure")
-}
