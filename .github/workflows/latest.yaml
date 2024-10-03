@@ -38,6 +38,10 @@ jobs:
       - name: Lint Go Code
         run: |
           make lint-go
+      - name: Run Unit tests
+        run: |
+          make unit-tests
+
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
@@ -69,7 +73,7 @@ jobs:
         with:
           pipeline_version: v0.61.1
           feature_flags: '{"enable-step-actions": "true"}'
-          setup_registry: false      
+          setup_registry: false
       - name: tests
         run: |
           set -euxfo pipefail
