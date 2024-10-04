@@ -2,8 +2,11 @@ package tar
 
 import (
 	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,16 +15,19 @@ import (
 )
 
 func Tarit(source, target string) error {
+	var buf bytes.Buffer
+
+	// write the .tar.gzip
 	tarfile, err := os.Create(target)
 	if err != nil {
 		return err
 	}
 	defer tarfile.Close()
 
-	tarball := tar.NewWriter(tarfile)
-	defer tarball.Close()
+	gz := gzip.NewWriter(&buf)
+	tarball := tar.NewWriter(gz)
 
-	return filepath.Walk(source,
+	err = filepath.Walk(source,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -49,6 +55,18 @@ func Tarit(source, target string) error {
 			_, err = io.Copy(tarball, file)
 			return err
 		})
+	if err != nil {
+		return err
+	}
+
+	gz.Close()
+	tarball.Close()
+
+	if _, err := io.Copy(tarfile, &buf); err != nil {
+		log.Println("error copying tarfile", err)
+		return err
+	}
+	return nil
 }
 
 func Untar(ctx context.Context, file *os.File, target string) error {
@@ -57,5 +75,5 @@ func Untar(ctx context.Context, file *os.File, target string) error {
 		return err
 	}
 	defer f.Close()
-	return extract.Archive(ctx, f, target, nil)
+	return extract.Gz(ctx, f, target, nil)
 }
