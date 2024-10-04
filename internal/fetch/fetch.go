@@ -7,11 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift-pipelines/tekton-caches/internal/tar"
-
-	"github.com/openshift-pipelines/tekton-caches/internal/provider/s3"
-
-	"github.com/openshift-pipelines/tekton-caches/internal/provider/gcs"
+	"github.com/openshift-pipelines/tekton-caches/internal/provider/blob"
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
 )
 
@@ -22,24 +18,18 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 			return fmt.Errorf("failed to create folder: %w", err)
 		}
 	}
+	target = strings.ReplaceAll(target, "{{hash}}", hash)
 	u, err := url.Parse(target)
 	if err != nil {
 		return err
 	}
 	source := strings.TrimPrefix(target, u.Scheme+"://")
-	source = strings.ReplaceAll(source, "{{hash}}", hash)
-	file, _ := os.CreateTemp("", "cache.tar")
 
 	switch u.Scheme {
 	case "oci":
 		return oci.Fetch(ctx, hash, source, folder, insecure)
-	case "s3":
-		if err := s3.Fetch(ctx, source, file.Name()); err != nil {
-			return err
-		}
-		return tar.Untar(ctx, file, folder)
-	case "gs":
-		return gcs.Fetch(ctx, hash, source, folder)
+	case "s3", "gs":
+		return blob.Fetch(ctx, *u, folder)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}
