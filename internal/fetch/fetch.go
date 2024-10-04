@@ -7,9 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift-pipelines/tekton-caches/internal/tar"
-
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/s3"
+	"github.com/openshift-pipelines/tekton-caches/internal/provider/vfs"
 
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/gcs"
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
@@ -26,20 +25,24 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 	if err != nil {
 		return err
 	}
+	target = strings.ReplaceAll(target, "{{hash}}", hash)
 	source := strings.TrimPrefix(target, u.Scheme+"://")
-	source = strings.ReplaceAll(source, "{{hash}}", hash)
-	file, _ := os.CreateTemp("", "cache.tar")
 
 	switch u.Scheme {
 	case "oci":
 		return oci.Fetch(ctx, hash, source, folder, insecure)
 	case "s3":
-		if err := s3.Fetch(ctx, source, file.Name()); err != nil {
+		remoteFile, err := s3.File(ctx, target)
+		if err != nil {
 			return err
 		}
-		return tar.Untar(ctx, file, folder)
+		return vfs.Fetch(ctx, folder, remoteFile)
 	case "gs":
-		return gcs.Fetch(ctx, hash, source, folder)
+		remoteFile, err := gcs.File(ctx, target)
+		if err != nil {
+			return err
+		}
+		return vfs.Fetch(ctx, folder, remoteFile)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}

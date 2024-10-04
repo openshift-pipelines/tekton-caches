@@ -1,0 +1,25 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-s3-
+spec:
+  pipelineRef:
+    name: pipeline
+  params:
+    - name: repo_url
+      value: https://github.com/chmouel/go-helloworld
+    - name: revision
+      value: main
+    - name: registry
+      value: gs://tekton-cache
+    - name: buildCommand
+      value: go build -v ./
+    - name: image
+      value: golang:1.21
+  workspaces:
+    - name: cred
+      secret:
+        secretName: aws-cred
+    - name: source
+      emptyDir: {}

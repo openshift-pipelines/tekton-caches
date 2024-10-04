@@ -38,6 +38,16 @@ spec:
         The path where to find the google credentials. If left empty, it is ignored.
       type: string
       default: ""
+    - name: awsConfigFile
+      description: |
+        The path to the aws config file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: awsCredentialFile
+      description: |
+        The path to find the aws credentials file. If left empty, it is ignored.
+      type: string
+      default: ""
     - name: cred-store
       description: |
         The path where to find the creds to download cache files . If left empty, it is ignored.
@@ -60,7 +70,10 @@ spec:
       value: $(params.googleCredentialsPath)
     - name: CRED_STORE
       value: $(params.cred-store)
-
+    - name: AWS_CONFIG_FILE
+      value: $(params.awsConfigFile)
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      value: $(params.awsCredentialFile)
   # FIXME: use a released version once something is released :)
   image: ko://github.com/openshift-pipelines/tekton-caches/cmd/cache
   args: ["$(params.patterns[*])"]
