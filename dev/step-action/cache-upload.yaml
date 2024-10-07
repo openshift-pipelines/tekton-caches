@@ -58,9 +58,9 @@ spec:
         The path to find the aws credentials file. If left empty, it is ignored.
       type: string
       default: ""
-    - name: cred-store
+    - name: blobQueryParams
       description: |
-        The path where to find the creds to upload cache files . If left empty, it is ignored.
+        Blob Query Params to support configure s3, gcs and azure.
       type: string
       default: ""
   env:
@@ -82,6 +82,8 @@ spec:
       value: $(params.awsConfigFile)
     - name: AWS_SHARED_CREDENTIALS_FILE
       value: $(params.awsCredentialFile)
+    - name: BLOB_QUERY_PARAMS
+      value: $(params.blobQueryParams)
   # FIXME: use a released version once something is released :)
   image: ko://github.com/openshift-pipelines/tekton-caches/cmd/cache
   args: ["$(params.patterns[*])"]
