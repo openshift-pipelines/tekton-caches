@@ -3,56 +3,51 @@ package gcs
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
+
 	"github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/pkg/common"
-	"github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/pkg/fetcher"
-	"google.golang.org/api/option"
 )
 
-const (
-	sourceType    = "Manifest"
-	stagingFolder = ".download/"
-	backoff       = 100 * time.Millisecond
-	retries       = 0
-)
-
-func Fetch(ctx context.Context, hash, target, folder string) error {
-	location := "gs://" + target + hash + ".json"
-	bucket, object, generation, err := common.ParseBucketObject(location)
+func Fetch(ctx context.Context, source, destFileName string) error {
+	location := "gs://" + source
+	bucket, object, _, err := common.ParseBucketObject(location)
 	if err != nil {
 		return fmt.Errorf("parsing location from %q failed: %w", location, err)
 	}
-	client, err := storage.NewClient(ctx, option.WithUserAgent(userAgent))
+
+	client, err := storage.NewClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create a new gcs client: %w", err)
+		return fmt.Errorf("storage.NewClient: %w", err)
 	}
-	gcs := &fetcher.Fetcher{
-		GCS:         realGCS{client, object},
-		OS:          realOS{},
-		DestDir:     folder,
-		StagingDir:  filepath.Join(folder, stagingFolder),
-		CreatedDirs: map[string]bool{},
-		Bucket:      bucket,
-		Object:      object,
-		Generation:  generation,
-		TimeoutGCS:  true,
-		WorkerCount: workerCount,
-		Retries:     retries,
-		Backoff:     backoff,
-		SourceType:  sourceType,
-		KeepSource:  false,
-		Verbose:     false,
-		Stdout:      os.Stdout,
-		Stderr:      os.Stderr,
+	defer client.Close()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*50)
+	defer cancel()
+
+	f, err := os.Create(destFileName)
+	if err != nil {
+		return fmt.Errorf("os.Create: %w", err)
 	}
-	err = gcs.Fetch(ctx)
-	if err != nil && !strings.Contains(err.Error(), "storage: object doesn't exist") {
-		return fmt.Errorf("failed to fetch: %w", err)
+
+	rc, err := client.Bucket(bucket).Object(object).NewReader(ctx)
+	if err != nil {
+		return fmt.Errorf("Object(%q).NewReader: %w", object, err)
 	}
+	defer rc.Close()
+
+	if _, err := io.Copy(f, rc); err != nil {
+		return fmt.Errorf("io.Copy: %w", err)
+	}
+
+	if err = f.Close(); err != nil {
+		return fmt.Errorf("f.Close: %w", err)
+	}
+	log.Printf("Blob %v downloaded to local file %v\n", object, destFileName)
+
 	return nil
 }

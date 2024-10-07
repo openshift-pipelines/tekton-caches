@@ -7,12 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/openshift-pipelines/tekton-caches/internal/tar"
-
-	"github.com/openshift-pipelines/tekton-caches/internal/provider/s3"
-
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/gcs"
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
+	"github.com/openshift-pipelines/tekton-caches/internal/provider/s3"
+	"github.com/openshift-pipelines/tekton-caches/internal/tar"
 )
 
 func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
@@ -39,7 +37,10 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 		}
 		return tar.Untar(ctx, file, folder)
 	case "gs":
-		return gcs.Fetch(ctx, hash, source, folder)
+		if err := gcs.Fetch(ctx, source, file.Name()); err != nil {
+			return err
+		}
+		return tar.Untar(ctx, file, folder)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}

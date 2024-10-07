@@ -27,17 +27,18 @@ func Upload(ctx context.Context, hash, target, folder string, insecure bool) err
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := tar.Tarit(folder, tarFile.Name()); err != nil {
+	tarName := tarFile.Name()
+	if err := tar.Tarit(folder, tarName); err != nil {
 		return err
 	}
-	defer os.Remove(tarFile.Name())
+	defer os.Remove(tarName)
 	switch u.Scheme {
 	case "oci":
 		return oci.Upload(ctx, hash, newTarget, folder, insecure)
 	case "s3":
-		return s3.Upload(ctx, newTarget, tarFile.Name())
+		return s3.Upload(ctx, newTarget, tarName)
 	case "gs":
-		return gcs.Upload(ctx, hash, newTarget, folder)
+		return gcs.Upload(ctx, newTarget, tarName)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}

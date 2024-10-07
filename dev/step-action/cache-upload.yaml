@@ -70,12 +70,12 @@ spec:
       value: $(params.googleCredentialsPath)
     - name: CRED_STORE
       value: $(params.cred-store)
-  # FIXME: use a released version once something is released :)
   image: ko://github.com/openshift-pipelines/tekton-caches/cmd/cache
   args: ["$(params.patterns[*])"]
   script: |
     #!/usr/bin/env sh
     set -x
+    
     if [[ ${PARAM_FORCE_CACHE_UPLOAD} == "false" && ${RESULT_CACHE_FETCHED} == "true" ]]; then
       echo "no need to upload cache"
       exit 0
