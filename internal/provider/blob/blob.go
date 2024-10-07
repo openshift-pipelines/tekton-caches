@@ -22,6 +22,14 @@ const (
 	cacheFile = "cache.tar.gz"
 )
 
+var (
+	queryParams string
+)
+
+func init() {
+	queryParams = os.Getenv("BLOB_QUERY_PARAMS")
+}
+
 func Fetch(ctx context.Context, url url.URL, folder string) error {
 	log.Printf("Downloading cache from %s to %s", url.String(), folder)
 	file, err := os.CreateTemp("", cacheFile)
@@ -31,7 +39,7 @@ func Fetch(ctx context.Context, url url.URL, folder string) error {
 	}
 	defer os.Remove(file.Name())
 
-	bucket, err := blob.OpenBucket(ctx, url.String()+"?usePathStyle=true")
+	bucket, err := blob.OpenBucket(ctx, url.String()+queryParams)
 	if err != nil {
 		log.Printf("error opening bucket: %s", err)
 		return err
@@ -71,7 +79,7 @@ func Upload(ctx context.Context, url url.URL, folder string) error {
 		return err
 	}
 
-	bucket, err := blob.OpenBucket(ctx, url.String()+"?usePathStyle=true")
+	bucket, err := blob.OpenBucket(ctx, url.String()+queryParams)
 	if err != nil {
 		return err
 	}
