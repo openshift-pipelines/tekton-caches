@@ -468,6 +468,7 @@ gocloud.dev/aws
 gocloud.dev/blob
 gocloud.dev/blob/driver
 gocloud.dev/blob/gcsblob
+gocloud.dev/blob/memblob
 gocloud.dev/blob/s3blob
 gocloud.dev/gcerrors
 gocloud.dev/gcp

@@ -10,12 +10,12 @@ import (
 	"github.com/openshift-pipelines/tekton-caches/internal/tar"
 	"gocloud.dev/blob"
 
-	// Adding the driver for gcs
+	// Adding the driver for gcs.
 	_ "gocloud.dev/blob/gcsblob"
-	// Adding the driver for s3
+	// Adding the driver for s3.
 	_ "gocloud.dev/blob/s3blob"
-	// If we want to add azure blob storage, we can use this import
-	// _ "gocloud.dev/blob/azureblob"
+	// If we want to add azure blob storage, we can use this import.
+	// _ "gocloud.dev/blob/azureblob" .
 )
 
 const (
@@ -24,8 +24,19 @@ const (
 
 var (
 	queryParams string
+	openBucket  = func(ctx context.Context, urlString string) (*blob.Bucket, error) {
+		bucket, err := blob.OpenBucket(ctx, urlString+queryParams)
+		return bucket, err
+	}
+	clean = func(bucket *blob.Bucket) {
+		err := bucket.Close()
+		if err != nil {
+			log.Println("Got error while closing blob")
+		}
+	}
 )
 
+//nolint:gochecknoinits
 func init() {
 	queryParams = os.Getenv("BLOB_QUERY_PARAMS")
 }
@@ -39,12 +50,12 @@ func Fetch(ctx context.Context, url url.URL, folder string) error {
 	}
 	defer os.Remove(file.Name())
 
-	bucket, err := blob.OpenBucket(ctx, url.String()+queryParams)
+	bucket, err := openBucket(ctx, url.String())
 	if err != nil {
 		log.Printf("error opening bucket: %s", err)
 		return err
 	}
-	defer bucket.Close()
+	defer clean(bucket)
 
 	rc, err := bucket.NewReader(ctx, url.Path[1:], nil)
 	if err != nil {
@@ -79,11 +90,11 @@ func Upload(ctx context.Context, url url.URL, folder string) error {
 		return err
 	}
 
-	bucket, err := blob.OpenBucket(ctx, url.String()+queryParams)
+	bucket, err := openBucket(ctx, url.String())
 	if err != nil {
 		return err
 	}
-	defer bucket.Close()
+	defer clean(bucket)
 
 	writer, err := bucket.NewWriter(ctx, url.Path[1:], nil)
 	if err != nil {
