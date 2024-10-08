@@ -141,6 +141,84 @@ spec:
 ```
 `bound-sa-token` workspace isn't required if Workload Identity federation isn't setup. Here we assumed an OIDC is configured in OpenShift. 
 
+## Using with AWS S3 Storage as a backend
+
+In order to use the `StepAction` with AWS S3 buckets, the parameter `cred-store` needs to be specified. It should point
+to the aws configuration directory file — which usually comes from a secret.
+The directory should contain two files
+
+1. **credentials :**
+
+   This file should contain the aws_access_key_id and aws_secret_access_key.
+    ```
+       [default]
+       aws_access_key_id = <aws_access_key_id>
+       aws_secret_access_key = <aws_secret_access_key>  
+    ```
+2. **config :**
+
+   This file contains the region where S3 buckets are hosted.
+    ```
+        [default]
+        region = us-east-2
+        output = json
+    ```
+
+Let's assume you have AWS credentials stored in your home directory under .aws directory.
+
+Let's create secret for aws named aws-secret
+
+```
+  kubectl create secret generic aws-cred --from-file=${HOME}/.aws/config --from-file=${HOME}/.aws/credentials
+```
+
+Now create a TaskRun file named `task-run.yaml`
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: my-s3-taskrun-
+spec:
+  params:
+  taskSpec:
+    params:
+    workspaces:
+      - name: source
+      - name: cred
+        optional: true
+    steps:
+      - # […] git clone, …
+      - name: cache-fetch
+        ref:
+          name: cache-fetch
+          # or using http resolver with https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
+        params:
+          - name: patterns
+            value: [ "go.mod", "go.sum" ]
+          - name: source
+            value: s3://my-bucket/some/folder
+          - name: cachePath
+            value: $(workspace.source.path)/cache
+          - name: workingdir
+            value: $(workspaces.source.path)/repo
+          - name: cred-store
+            value: $(workspace.cred.path)
+      - # […] something else like go build
+      - # […] and then same thing with cache-upload
+  workspaces:
+    - name: source
+      emptyDir: { }
+    - name: cred
+      secret:
+        secretName: aws-cred
+```
+
+Now Apply the configuration using
+
+``kubectl apply -f task-run.yaml``
+
+Please make sure you have given sufficient permissions to aws service account being used.
 
 ## License
 
