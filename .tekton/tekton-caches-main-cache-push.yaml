@@ -8,7 +8,8 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "main" &&
-      ("upstream/***".pathChanged() || "openshift/***".pathChanged() ||
+      ("upstream/***".pathChanged() || "openshift/patches/***".pathChanged() || "openshift/rpms/***".pathChanged() ||
+      "openshift/dockerfiles/cache.Dockerfile".pathChanged() ||
       ".tekton/cache-pull-request.yaml".pathChanged() ||
       ".tekton/cache-push.yaml".pathChanged() ||
       ".tekton/docker-build.yaml".pathChanged())
