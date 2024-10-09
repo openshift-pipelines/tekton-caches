@@ -48,9 +48,19 @@ spec:
         The path where to find the google credentials. If left empty, it is ignored.
       type: string
       default: ""
-    - name: cred-store
+    - name: awsConfigFile
       description: |
-        The path where to find the creds to upload cache files . If left empty, it is ignored.
+        The path to the aws config file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: awsCredentialFile
+      description: |
+        The path to find the aws credentials file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: blobQueryParams
+      description: |
+        Blob Query Params to support configure s3, gcs and azure. This is optional unless some additional features of storage providers are required like s3 acceleration, fips, pathstyle,etc
       type: string
       default: ""
   env:
@@ -68,8 +78,12 @@ spec:
       value: $(params.force-cache-upload)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
-    - name: CRED_STORE
-      value: $(params.cred-store)
+    - name: AWS_CONFIG_FILE
+      value: $(params.awsConfigFile)
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      value: $(params.awsCredentialFile)
+    - name: BLOB_QUERY_PARAMS
+      value: $(params.blobQueryParams)
   # FIXME: use a released version once something is released :)
   image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
   args: ["$(params.patterns[*])"]
