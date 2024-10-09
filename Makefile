@@ -6,8 +6,10 @@ TIMEOUT_UNIT = 20m
 GOFUMPT=gofumpt
 
 e2e-coverage: ## run e2e tests with coverage
-	@go test -failfast -count=1 -tags=$(E2E_TAG) ./tests -coverpkg=./... -coverprofile /tmp/coverage.out
+	tests/e2e.sh
+	@go test -v -failfast -count=1 -tags=$(E2E_TAG) ./tests -coverpkg=./... -coverprofile /tmp/coverage.out
 	@go tool cover -func /tmp/coverage.out
+
 e2e: e2e-coverage
 
 e2e-docker: ## run e2e tests with a docker registry started

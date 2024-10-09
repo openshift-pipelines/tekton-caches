@@ -1,6 +1,7 @@
 //go:build e2e
+// +build e2e
 
-package fetch
+package tests
 
 import (
 	"context"
