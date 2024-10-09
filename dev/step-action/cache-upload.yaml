@@ -60,7 +60,7 @@ spec:
       default: ""
     - name: blobQueryParams
       description: |
-        Blob Query Params to support configure s3, gcs and azure.
+        Blob Query Params to support configure s3, gcs and azure. This is optional unless some additional features of storage providers are required like s3 acceleration, fips, pathstyle,etc
       type: string
       default: ""
   env:

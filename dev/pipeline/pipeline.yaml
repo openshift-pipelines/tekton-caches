@@ -78,10 +78,6 @@ spec:
                 value: $(workspaces.cred.path)/credentials
               - name: awsConfigFile
                 value: $(workspaces.cred.path)/config
-              - name: cred-store
-                value: $(workspaces.cred.path)
-              - name: cred-store
-                value: $(workspaces.cred.path)
               - name: googleCredentialsPath
                 value: $(workspaces.cred.path)/creds.json
 

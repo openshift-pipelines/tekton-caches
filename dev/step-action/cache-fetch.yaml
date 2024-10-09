@@ -48,8 +48,11 @@ spec:
         The path to find the aws credentials file. If left empty, it is ignored.
       type: string
       default: ""
-    - name: BLOB_QUERY_PARAMS
-      value: $(params.blobQueryParams)
+    - name: blobQueryParams
+      description: |
+        Blob Query Params to support configure s3, gcs and azure. This is optional unless some additional features of storage providers are required like s3 acceleration, fips, pathstyle,etc
+      type: string
+      default: ""
   results: # Any result to "publish" ?
     - name: fetched
       description: |
@@ -65,8 +68,6 @@ spec:
       value: $(params.insecure)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
-    - name: CRED_STORE
-      value: $(params.cred-store)
     - name: AWS_CONFIG_FILE
       value: $(params.awsConfigFile)
     - name: AWS_SHARED_CREDENTIALS_FILE
