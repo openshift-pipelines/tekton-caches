@@ -1,0 +1,22 @@
+---
+apiVersion: appstudio.redhat.com/v1beta2
+kind: IntegrationTestScenario
+metadata:
+  name: tekton-caches-main-enterprise-contract
+spec:
+  application: tekton-caches-main
+  contexts:
+    - description: Application testing
+      name: application
+  params:
+    - name: POLICY_CONFIGURATION
+      value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers
+  resolverRef:
+    params:
+      - name: url
+        value: "https://github.com/konflux-ci/build-definitions"
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipelines/enterprise-contract.yaml
+    resolver: git
