@@ -74,8 +74,16 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
+              - name: awsCredentialFile
+                value: $(workspaces.cred.path)/credentials
+              - name: awsConfigFile
+                value: $(workspaces.cred.path)/config
               - name: cred-store
                 value: $(workspaces.cred.path)
+              - name: cred-store
+                value: $(workspaces.cred.path)
+              - name: googleCredentialsPath
+                value: $(workspaces.cred.path)/creds.json
 
           - name: run-go-build
             workingDir: $(workspaces.source.path)/repo
@@ -104,5 +112,11 @@ spec:
                 value: $(workspaces.source.path)/repo
               - name: cred-store
                 value: $(workspaces.cred.path)
+              - name: awsCredentialFile
+                value: $(workspaces.cred.path)/credentials
+              - name: awsConfigFile
+                value: $(workspaces.cred.path)/config
               - name: force-cache-upload
                 value: $(params.force-cache-upload)
+              - name: googleCredentialsPath
+                value: $(workspaces.cred.path)/creds.json
