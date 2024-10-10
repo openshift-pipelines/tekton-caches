@@ -12,6 +12,8 @@ FROM $RUNTIME
 ARG VERSION=tekton-caches-main
 
 COPY --from=builder /tmp/cache /ko-app/cache
+
+
 LABEL \
       com.redhat.component="openshift-pipelines-tekton-caches" \
       name="openshift-pipelines/pipelines-tekton-caches-rhel8" \
@@ -23,3 +25,8 @@ LABEL \
       io.k8s.description="Red Hat OpenShift Pipelines Tekton Caches" \
       io.openshift.tags="pipelines,tekton,openshift,tekton-caches"
 
+RUN microdnf install -y shadow-utils
+RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
+USER 65532
+
+ENTRYPOINT ["/ko-app/cache"]
