@@ -1,0 +1,59 @@
+---
+lockfileVersion: 1
+lockfileVendor: redhat
+arches:
+- arch: x86_64
+  packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libselinux-3.6-1.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 89946
+    checksum: sha256:13689218202fab6f3ec8f3ed88bc2f279377eced3ba6b95daff7b8f5f71eea6e
+    name: libselinux
+    evr: 3.6-1.el9
+    sourcerpm: libselinux-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libsemanage-3.6-1.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 123547
+    checksum: sha256:3eccd09fc7a14c1e6ecd7909028d5598427f502b1ddaec1f48f64e6f7cc4c8f9
+    name: libsemanage
+    evr: 3.6-1.el9
+    sourcerpm: libsemanage-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/l/libsepol-3.6-1.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 339336
+    checksum: sha256:bd28318adcee4e2124d612bcb349156ca88991b3b6151c0f9cd5e3865d67da8d
+    name: libsepol
+    evr: 3.6-1.el9
+    sourcerpm: libsepol-3.6-1.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/s/shadow-utils-4.9-8.el9.x86_64.rpm
+    repoid: ubi-9-baseos-rpms
+    size: 1256248
+    checksum: sha256:ec392070aa79e9a39517f5452a4863cd7075493fae3205465c5489db1fe33dea
+    name: shadow-utils
+    evr: 2:4.9-8.el9
+    sourcerpm: shadow-utils-4.9-8.el9.src.rpm
+  source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/l/libselinux-3.6-1.el9.src.rpm
+    repoid: ubi-9-baseos-source
+    size: 268594
+    checksum: sha256:cc4ad1925bfe7cbdf29ec71bf7fd743017f05a92ae1fa94d9b0814fe3cf557a6
+    name: libselinux
+    evr: 3.6-1.el9
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/l/libsemanage-3.6-1.el9.src.rpm
+    repoid: ubi-9-baseos-source
+    size: 216930
+    checksum: sha256:166c3fa12c547c6ff90575323b1aa9cf3c40d0eceb238a0fe79d76b575b6c606
+    name: libsemanage
+    evr: 3.6-1.el9
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/l/libsepol-3.6-1.el9.src.rpm
+    repoid: ubi-9-baseos-source
+    size: 536787
+    checksum: sha256:7bfa43d2f251d1a55d212f3ddd34ee0c2333a88f3c183d5b1752fc30758ae8ac
+    name: libsepol
+    evr: 3.6-1.el9
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/s/shadow-utils-4.9-8.el9.src.rpm
+    repoid: ubi-9-baseos-source
+    size: 1715148
+    checksum: sha256:fabc62a489698a54d137929cf3d8796783650dcfc5e65d370e175a8ee21682d9
+    name: shadow-utils
+    evr: 2:4.9-8.el9
