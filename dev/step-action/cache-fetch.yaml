@@ -48,8 +48,12 @@ spec:
         The path to find the aws credentials file. If left empty, it is ignored.
       type: string
       default: ""
-    - name: BLOB_QUERY_PARAMS
-      value: $(params.blobQueryParams)
+    - name: blobQueryParams
+      type: string
+      default: ""
+    - name: cred-store
+      type: string
+      default: ""
   results: # Any result to "publish" ?
     - name: fetched
       description: |

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
 # Create a Kind Cluster if dont have sone
-#kind create cluster --name tekton-caches --config kind/kind-config.yaml
+kind create cluster --name tekton-caches --config $SCRIPT_DIR/kind/kind-config.yaml
 
 
 # Install Pipelines if not already installed.
@@ -17,13 +20,9 @@ kubectl patch configmap -n tekton-pipelines --type merge -p '{"data":{"enable-st
 #kubectl create secret generic aws-cred  --from-file=${HOME}/.aws/config --from-file=${HOME}/.aws/credentials 
 
 #Deploy Step Actions
-ko apply -BRf ./step-action
+ko apply -BRf $SCRIPT_DIR/step-action
 
 # Deploy Pipelines
-kubectl apply -f ./pipeline
-
-#Create PipelineRuns using this command
-kubectl create -f ./pr
-
+kubectl apply -f $SCRIPT_DIR/pipeline
 
 

@@ -28,7 +28,7 @@ spec:
       projected:
         sources:
           - serviceAccountToken:
-              audience: https://iam.googleapis.com/projects/272779626560/locations/global/workloadIdentityPools/openshift-pool/providers/opeshift-wif
+              audience: openshift
               expirationSeconds: 3600
               path: token
 

@@ -27,8 +27,8 @@ set -x
 #   Create a new workload identity pool:
     gcloud iam workload-identity-pools create $POOL_ID \
         --location="global" \
-        --description="DESCRIPTION" \
-        --display-name="DISPLAY_NAME"
+        --description=$POOL_ID \
+        --display-name=$POOL_ID
 
 
 #   Add the Kubernetes cluster as a workload identity pool provider and upload the cluster's JWKS:
@@ -37,6 +37,7 @@ set -x
         --location="global" \
         --workload-identity-pool=$POOL_ID \
         --issuer-uri=$ISSUER \
+        --allowed-audiences=openshift  \
         --attribute-mapping=$MAPPINGS \
         --jwk-json-path="cluster-jwks.json"
 
