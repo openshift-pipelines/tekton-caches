@@ -9,9 +9,9 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main" &&
-      ("upstream/***".pathChanged() || "openshift/***".pathChanged() ||
-      ".tekton/cache-pull-request.yaml".pathChanged() ||
-      ".tekton/cache-push.yaml".pathChanged() ||
+      ("upstream/***".pathChanged() || "openshift/patches/***".pathChanged() || "openshift/rpms/***".pathChanged() ||
+      "openshift/dockerfiles/cache.Dockerfile".pathChanged() ||
+      ".tekton/tekton-caches-main-cache-pull-request.yaml".pathChanged() ||
       ".tekton/docker-build.yaml".pathChanged())
   creationTimestamp: null
   labels:
