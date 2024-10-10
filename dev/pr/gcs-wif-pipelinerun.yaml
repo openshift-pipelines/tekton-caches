@@ -31,4 +31,3 @@ spec:
               audience: openshift
               expirationSeconds: 3600
               path: token
-
