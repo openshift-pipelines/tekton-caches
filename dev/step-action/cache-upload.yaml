@@ -43,6 +43,12 @@ spec:
         Whether to force the cache upload even if it was fetched previously
       type: string
       default: "false"
+    - name: dockerConfig
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
     - name: googleCredentialsPath
       description: |
         The path where to find the google credentials. If left empty, it is ignored.
@@ -76,6 +82,8 @@ spec:
       value: $(params.fetched)
     - name: PARAM_FORCE_CACHE_UPLOAD
       value: $(params.force-cache-upload)
+    - name: DOCKER_CONFIG
+      value: $(params.dockerConfig)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
     - name: AWS_CONFIG_FILE
