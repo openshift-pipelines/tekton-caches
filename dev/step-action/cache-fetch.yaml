@@ -33,6 +33,12 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
+    - name: dockerConfig
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
     - name: googleCredentialsPath
       description: |
         The path where to find the google credentials. If left empty, it is ignored.
@@ -66,6 +72,8 @@ spec:
       value: $(params.workingdir)
     - name: PARAM_INSECURE
       value: $(params.insecure)
+    - name: DOCKER_CONFIG
+      value: $(params.dockerConfig)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.googleCredentialsPath)
     - name: AWS_CONFIG_FILE

@@ -106,7 +106,7 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: workingdir
                 value: $(workspaces.source.path)/repo
-              - name: cred-store
+              - name: dockerConfig
                 value: $(workspaces.cred.path)
               - name: awsCredentialFile
                 value: $(workspaces.cred.path)/credentials
