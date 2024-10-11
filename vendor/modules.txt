@@ -461,7 +461,7 @@ go.opentelemetry.io/otel/metric/noop
 ## explicit; go 1.21
 go.opentelemetry.io/otel/trace
 go.opentelemetry.io/otel/trace/embedded
-# gocloud.dev v0.39.0
+# gocloud.dev v0.40.0
 ## explicit; go 1.21.0
 gocloud.dev/aws
 gocloud.dev/blob

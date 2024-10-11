@@ -8,7 +8,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
-	gocloud.dev v0.39.0
+	gocloud.dev v0.40.0
 	gotest.tools/v3 v3.5.1
 )
 
