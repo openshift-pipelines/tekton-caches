@@ -37,6 +37,9 @@ func Tarit(source, target string) error {
 				return err
 			}
 
+			if info.IsDir() {
+				header.Mode = 0o755 //  create directories with same permissions.
+			}
 			header.Name = strings.TrimPrefix(path, source)
 
 			if err := tarball.WriteHeader(header); err != nil {
@@ -70,6 +73,7 @@ func Tarit(source, target string) error {
 }
 
 func Untar(ctx context.Context, file *os.File, target string) error {
+	log.Printf("Untaring file %s to %s", file.Name(), target)
 	f, err := os.Open(file.Name())
 	if err != nil {
 		return err
