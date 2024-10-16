@@ -81,11 +81,12 @@ func TestFetchInvalidFolder(t *testing.T) {
 	err = crane.Push(img, fmt.Sprintf("%s/test/crane:%s", u.Host, hash))
 	assert.NoError(t, err, "Failed to push image to registry")
 
-	folder := "/root"
+	folder := "/tmp/readonly-dir-for-unit-testing"
+	_ = os.MkdirAll(folder, 0o555)
+	defer os.RemoveAll(folder)
 	insecure := false
 
 	err = Fetch(context.Background(), hash, target, folder, insecure)
-
 	assert.Error(t, err, "Fetch should return an error when folder is not writable")
 	assert.Contains(t, err.Error(), "permission denied", "Error should indicate permission issues for the folder")
 }
