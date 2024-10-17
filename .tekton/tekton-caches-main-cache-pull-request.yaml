@@ -13,7 +13,7 @@ metadata:
       ("upstream/***".pathChanged() || "openshift/patches/***".pathChanged() || "openshift/rpms/***".pathChanged() ||
       "openshift/dockerfiles/cache.Dockerfile".pathChanged() ||
       ".tekton/tekton-caches-main-cache-pull-request.yaml".pathChanged() ||
-      ".tekton/docker-build.yaml".pathChanged())
+      ".tekton/docker-build-ta.yaml".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-caches-main
@@ -33,27 +33,15 @@ spec:
     value: 5d
   - name: dockerfile
     value: openshift/dockerfiles/cache.Dockerfile
-  - name: build-source-image
-    value: "true"
-  - name: hermetic
-    value: "true"
+  - name: build-platforms
+    value:
+      - linux/x86_64
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": "openshift/rpms"}
   pipelineRef:
-    name: docker-build
+    name: docker-build-ta
   workspaces:
-  - name: workspace
-    volumeClaimTemplate:
-      metadata:
-        creationTimestamp: null
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
-      status: {}
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
