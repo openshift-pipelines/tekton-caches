@@ -32,7 +32,7 @@ lint-go: ## runs go linter on all go files
 unit: unit-tests
 unit-tests: ## runs unit tests
 	@echo "Running Unit tests..."
-	go test ./...
+	go test -race ./...
 
 .PHONY: fumpt ## formats the GO code with gofumpt(excludes vendors dir)
 fumpt:
