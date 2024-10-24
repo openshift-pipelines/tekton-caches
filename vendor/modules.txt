@@ -912,7 +912,7 @@ gotest.tools/v3/internal/cleanup
 gotest.tools/v3/internal/difflib
 gotest.tools/v3/internal/format
 gotest.tools/v3/internal/source
-# k8s.io/api v0.31.1
+# k8s.io/api v0.31.2
 ## explicit; go 1.22.0
 k8s.io/api/admissionregistration/v1
 k8s.io/api/authentication/v1
