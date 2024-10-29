@@ -15,7 +15,7 @@ require (
 	gotest.tools/v3 v3.5.1
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
-	k8s.io/client-go v0.31.1
+	k8s.io/client-go v0.31.2
 	knative.dev/pkg v0.0.0-20240416145024-0f34a8815650
 	sigs.k8s.io/yaml v1.4.0
 )
