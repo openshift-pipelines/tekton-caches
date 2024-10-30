@@ -4,7 +4,7 @@ apiVersion: appstudio.redhat.com/v1alpha1
 kind: Component
 metadata:
   annotations:
-    build.appstudio.openshift.io/pipeline: '{"name":"docker-build","bundle":"latest"}'
+    build.appstudio.openshift.io/pipeline: '{"name":"docker-build-ta","bundle":"latest"}'
   name: tekton-caches-main-cache
 spec:
   componentName: cache
@@ -14,5 +14,5 @@ spec:
   source:
     git:
       url: https://github.com/openshift-pipelines/tekton-caches
-      dockerfileUrl: openshift/dockerfiles/cache.Dockerfile
+      dockerfileUrl: .konflux/dockerfiles/cache.Dockerfile
       revision: main
