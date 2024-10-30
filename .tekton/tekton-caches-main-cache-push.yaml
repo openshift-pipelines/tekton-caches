@@ -10,7 +10,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "main" &&
       ("***".pathChanged() ||
-      "openshift/dockerfiles/cache.Dockerfile".pathChanged() ||
+      ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
       ".tekton/tekton-caches-main-cache-push.yaml".pathChanged() ||
       ".tekton/docker-build-ta.yaml".pathChanged())
   creationTimestamp: null
@@ -29,10 +29,10 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches-main/cache:{{revision}}
   - name: dockerfile
-    value: openshift/dockerfiles/cache.Dockerfile
+    value: .konflux/dockerfiles/cache.Dockerfile
   - name: prefetch-input
     value: |
-      {"type": "rpm", "path": "openshift/rpms"}
+      {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
   workspaces:

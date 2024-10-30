@@ -12,6 +12,8 @@ spec:
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers
+    - name: TIMEOUT
+      value: "15m0s"
   resolverRef:
     params:
       - name: url
