@@ -8,7 +8,7 @@ spec:
   application: tekton-caches-main
   contexts:
     - description: Application testing
-      name: group
+      name: push
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers

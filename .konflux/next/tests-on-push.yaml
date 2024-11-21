@@ -3,12 +3,12 @@
 apiVersion: appstudio.redhat.com/v1beta2
 kind: IntegrationTestScenario
 metadata:
-  name: tekton-caches-main-enterprise-contract
+  name: tekton-caches-next-enterprise-contract
 spec:
-  application: tekton-caches-main
+  application: tekton-caches-next
   contexts:
     - description: Application testing
-      name: group
+      name: push
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers

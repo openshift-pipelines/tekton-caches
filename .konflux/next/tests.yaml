@@ -8,7 +8,7 @@ spec:
   application: tekton-caches-next
   contexts:
     - description: Application testing
-      name: application
+      name: group
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers
