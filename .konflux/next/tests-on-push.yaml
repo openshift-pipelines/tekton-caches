@@ -3,7 +3,7 @@
 apiVersion: appstudio.redhat.com/v1beta2
 kind: IntegrationTestScenario
 metadata:
-  name: tekton-caches-next-enterprise-contract
+  name: tekton-caches-next-enterprise-contract-push
 spec:
   application: tekton-caches-next
   contexts:
