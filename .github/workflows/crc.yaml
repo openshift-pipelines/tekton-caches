@@ -33,8 +33,15 @@ jobs:
         go-version: ${{ matrix.go }}
     - name: Download and install CRC
       run: |
-        wget "https://developers.redhat.com/content-gateway/file/pub/openshift-v4/clients/crc/2.40.0/crc-linux-amd64.tar.xz"
-        tar -xf crc-linux-amd64.tar.xz --directory /usr/local/bin --strip-components=1 crc-linux-2.40.0-amd64/crc
+        wget "https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/latest/crc-linux-amd64.tar.xz"
+
+        latest_version=$(git -c 'versionsort.suffix=-' ls-remote --tags --sort='v:refname' https://github.com/crc-org/crc \
+        | tail -n1 \
+        | sed 's/.*\///; s/\^{}//; s/^v//')
+
+        # Use the extracted version in the tar command
+        tar -xf crc-linux-amd64.tar.xz --directory /usr/local/bin --strip-components=1 "crc-linux-${latest_version}-amd64/crc"
+
     - name: Testing CRC
       run: |
         which crc
