@@ -1,10 +1,10 @@
 # Extract
 
-[![Build Status](https://travis-ci.org/codeclysm/extract.svg?branch=master)](https://travis-ci.org/codeclysm/extract)
+[![Build Status](https://github.com/codeclysm/extract/actions/workflows/test.yaml/badge.svg?branch=master)](https://github.com/codeclysm/extract/actions/workflows/test.yaml)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/codeclysm/extract/master/LICENSE)
 [![Godoc Reference](https://img.shields.io/badge/Godoc-Reference-blue.svg)](https://godoc.org/github.com/codeclysm/extract)
 
-    import "github.com/codeclysm/extract/v3"
+    import "github.com/codeclysm/extract/v4"
 
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
@@ -54,6 +54,9 @@ type FS interface {
     MkdirAll(string, os.FileMode) error
     OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
     Symlink(string, string) error
+    Remove(path string) error
+    Stat(name string) (os.FileInfo, error)
+    Chmod(name string, mode os.FileMode) error
 }
 ```
 
