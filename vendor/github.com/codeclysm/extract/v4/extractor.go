@@ -24,10 +24,27 @@ import (
 // rather than directly on the filesystem
 type Extractor struct {
 	FS interface {
-		Link(string, string) error
-		MkdirAll(string, os.FileMode) error
+		// Link creates newname as a hard link to the oldname file. If there is an error, it will be of type *LinkError.
+		Link(oldname, newname string) error
+
+		// MkdirAll creates the directory path and all his parents if needed.
+		MkdirAll(path string, perm os.FileMode) error
+
+		// OpenFile opens the named file with specified flag (O_RDONLY etc.).
 		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
-		Symlink(string, string) error
+
+		// Symlink creates newname as a symbolic link to oldname.
+		Symlink(oldname, newname string) error
+
+		// Remove removes the named file or (empty) directory.
+		Remove(path string) error
+
+		// Stat returns a FileInfo describing the named file.
+		Stat(name string) (os.FileInfo, error)
+
+		// Chmod changes the mode of the named file to mode.
+		// If the file is a symbolic link, it changes the mode of the link's target.
+		Chmod(name string, mode os.FileMode) error
 	}
 }
 
@@ -147,11 +164,16 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 	return nil
 }
 
+type link struct {
+	Name string
+	Path string
+}
+
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	links := []link{}
-	symlinks := []link{}
+	links := []*link{}
+	symlinks := []*link{}
 
 	// We make the first pass creating the directory structure, or we could end up
 	// attempting to create a file where there's no folder
@@ -202,10 +224,13 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 				name = rename(name)
 			}
 
-			name = filepath.Join(location, name)
-			links = append(links, link{Path: path, Name: name})
+			name, err = safeJoin(location, name)
+			if err != nil {
+				continue
+			}
+			links = append(links, &link{Path: path, Name: name})
 		case tar.TypeSymlink:
-			symlinks = append(symlinks, link{Path: path, Name: header.Linkname})
+			symlinks = append(symlinks, &link{Path: path, Name: header.Linkname})
 		}
 	}
 
@@ -216,21 +241,50 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			return errors.New("interrupted")
 		default:
 		}
+		_ = e.FS.Remove(links[i].Path)
 		if err := e.FS.Link(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
 	}
 
-	for i := range symlinks {
+	if err := e.extractSymlinks(ctx, symlinks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error {
+	for _, symlink := range symlinks {
 		select {
 		case <-ctx.Done():
 			return errors.New("interrupted")
 		default:
 		}
-		if err := e.FS.Symlink(symlinks[i].Name, symlinks[i].Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", symlinks[i].Path)
+
+		// Make a placeholder and replace it after unpacking everything
+		_ = e.FS.Remove(symlink.Path)
+		f, err := e.FS.OpenFile(symlink.Path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0666))
+		if err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
 		}
 	}
+
+	for _, symlink := range symlinks {
+		select {
+		case <-ctx.Done():
+			return errors.New("interrupted")
+		default:
+		}
+		_ = e.FS.Remove(symlink.Path)
+		if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
+			return errors.Annotatef(err, "Create link %s", symlink.Path)
+		}
+	}
+
 	return nil
 }
 
@@ -262,7 +316,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		return errors.Annotatef(err, "Read the zip file")
 	}
 
-	links := []link{}
+	links := []*link{}
 
 	// We make the first pass creating the directory structure, or we could end up
 	// attempting to create a file where there's no folder
@@ -299,7 +353,13 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 
 		switch {
 		case info.IsDir() || forceDir:
-			if err := e.FS.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
+			dirMode := info.Mode() | os.ModeDir | 0100
+			if _, err := e.FS.Stat(path); err == nil {
+				// directory already created, update permissions
+				if err := e.FS.Chmod(path, dirMode); err != nil {
+					return errors.Annotatef(err, "Set permissions %s", path)
+				}
+			} else if err := e.FS.MkdirAll(path, dirMode); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
 		// We only check for symlinks because hard links aren't possible
@@ -309,7 +369,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 			} else if name, err := io.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
 			} else {
-				links = append(links, link{Path: path, Name: string(name)})
+				links = append(links, &link{Path: path, Name: string(name)})
 				f.Close()
 			}
 		default:
@@ -323,16 +383,8 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		}
 	}
 
-	// Now we make another pass creating the links
-	for i := range links {
-		select {
-		case <-ctx.Done():
-			return errors.New("interrupted")
-		default:
-		}
-		if err := e.FS.Symlink(links[i].Name, links[i].Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", links[i].Path)
-		}
+	if err := e.extractSymlinks(ctx, links); err != nil {
+		return err
 	}
 
 	return nil
@@ -340,10 +392,11 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 
 func (e *Extractor) copy(ctx context.Context, path string, mode os.FileMode, src io.Reader) error {
 	// We add the execution permission to be able to create files inside it
-	err := e.FS.MkdirAll(filepath.Dir(path), mode|os.ModeDir|100)
+	err := e.FS.MkdirAll(filepath.Dir(path), mode|os.ModeDir|0100)
 	if err != nil {
 		return err
 	}
+	_ = e.FS.Remove(path)
 	file, err := e.FS.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
 		return err
