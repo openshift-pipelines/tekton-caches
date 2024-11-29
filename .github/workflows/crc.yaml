@@ -12,6 +12,7 @@ jobs:
   build:
     name: Run E2E Tests on CRC
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     strategy:
       fail-fast: false
       matrix:
