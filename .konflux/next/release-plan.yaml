@@ -1,0 +1,24 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ReleasePlan
+metadata:
+  labels:
+    release.appstudio.openshift.io/auto-release: 'true'
+    release.appstudio.openshift.io/standing-attribution: 'true'
+  name: tektoncd-cache-next-rp
+  namespace: tekton-ecosystem-tenant
+spec:
+  application: tekton-caches-next
+  tenantPipeline:
+    serviceAccountName: release-registry-openshift-pipelines-next
+    pipelineRef:
+      resolver: git
+      params:
+        - name: url
+          value: https://github.com/openshift-pipelines/hack.git
+        - name: revision
+          value: main
+        - name: pathInRepo
+          value: tenantpipelines/pipeline.yaml
+    params:
+      - name: released_version
+        value: 5.0.5
