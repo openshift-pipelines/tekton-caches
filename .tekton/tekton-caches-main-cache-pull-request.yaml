@@ -35,7 +35,8 @@ spec:
     value: .konflux/dockerfiles/cache.Dockerfile
   - name: build-platforms
     value:
-      - linux/x86_64
+    - linux/x86_64
+    - linux/arm64
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
