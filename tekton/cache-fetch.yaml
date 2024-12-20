@@ -74,9 +74,8 @@ spec:
       value: $(params.awsCredentialFile)
     - name: BLOB_QUERY_PARAMS
       value: $(params.blobQueryParams)
-  # FIXME: use a released version once something is released :)
-  image: ghcr.io/openshift-pipelines/tekton-caches/cache:latest
-  args: ["$(params.patterns[*])"]
+  image: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches-main/cache@sha256:faca47bb0a096088a1145598dadcc0629ebb574c7cf2f649875defa54aa3af64
+  args: [ "$(params.patterns[*])" ]
   script: |
     #!/bin/sh
 
