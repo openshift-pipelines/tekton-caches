@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -55,7 +56,17 @@ func Tarit(source, target string) error {
 				return err
 			}
 			defer file.Close()
-			_, err = io.Copy(tarball, file)
+			if info.Mode()&os.ModeSymlink != 0 {
+				target, err := os.Readlink(path)
+				if err != nil {
+					return fmt.Errorf("failed to read symlink: %w", err)
+				}
+				header.Typeflag = tar.TypeSymlink
+				header.Linkname = target // Store the symlink target
+			} else {
+				_, err = io.Copy(tarball, file)
+			}
+
 			return err
 		})
 	if err != nil {
