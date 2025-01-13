@@ -10,16 +10,16 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main" &&
-      ("***".pathChanged() ||
+      ("upstream/***".pathChanged() || ".konflux/patches/***".pathChanged() || ".konflux/rpms/***".pathChanged() ||
       ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
-      ".tekton/tekton-caches-main-cache-pull-request.yaml".pathChanged() ||
+      ".tekton/tekton-caches-next-cache-pull-request.yaml".pathChanged() ||
       ".tekton/docker-build-ta.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: tekton-caches-main
-    appstudio.openshift.io/component: tekton-caches-main-cache
+    appstudio.openshift.io/application: tekton-caches-next
+    appstudio.openshift.io/component: tekton-caches-next-cache
     pipelines.appstudio.openshift.io/type: build
-  name: tekton-caches-main-cache-on-pull-request
+  name: tekton-caches-next-cache-on-pull-request
   namespace: tekton-ecosystem-tenant
 spec:
   params:
@@ -28,7 +28,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches-main/cache:on-pr-{{revision}}
+    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches-next/cache:on-pr-{{revision}}
   - name: image-expires-after
     value: 5d
   - name: dockerfile
