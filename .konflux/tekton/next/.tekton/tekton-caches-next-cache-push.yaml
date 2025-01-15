@@ -3,6 +3,8 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
+    pipelinesascode.tekton.dev/cancel-in-progress: "true" # Cancel in-progress pipelines
+    pipelinesascode.tekton.dev/pipeline: "https://raw.githubusercontent.com/openshift-pipelines/operator/refs/heads/next/.tekton/docker-build-ta.yaml"
     build.appstudio.openshift.io/repo: https://github.com/openshift-pipelines/tekton-caches?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
