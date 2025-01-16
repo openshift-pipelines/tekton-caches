@@ -13,8 +13,7 @@ metadata:
       == "main" &&
       ("***".pathChanged() ||
       ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
-      ".tekton/tekton-caches-main-cache-push.yaml".pathChanged() ||
-      ".tekton/docker-build-ta.yaml".pathChanged())
+      ".tekton/tekton-caches-main-cache-push.yaml".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: tekton-caches-main
