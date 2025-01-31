@@ -3,17 +3,19 @@
 apiVersion: appstudio.redhat.com/v1beta2
 kind: IntegrationTestScenario
 metadata:
-  name: tekton-caches-main-enterprise-contract-group
+  name: tekton-caches-main-enterprise-contract
 spec:
   application: tekton-caches-main
   contexts:
-    - description: Application testing
-      name: pull_request
+    - description: Application testing for tekton-caches-main-cache
+      name: component_tekton-caches-main-cache
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers
     - name: TIMEOUT
       value: "15m0s"
+    - name: SINGLE_COMPONENT
+      value: "true"
   resolverRef:
     params:
       - name: url
