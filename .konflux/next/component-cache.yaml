@@ -15,4 +15,4 @@ spec:
     git:
       url: https://github.com/openshift-pipelines/tekton-caches
       dockerfileUrl: .konflux/dockerfiles/cache.Dockerfile
-      revision: release-v0.1.x
+      revision: main
