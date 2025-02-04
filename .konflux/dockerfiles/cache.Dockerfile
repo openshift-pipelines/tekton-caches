@@ -9,14 +9,14 @@ COPY . .
 RUN go build -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
-ARG VERSION=tekton-caches-main
+ARG VERSION=tekton-caches-1.18
 
 COPY --from=builder /tmp/cache /ko-app/cache
 
 
 LABEL \
       com.redhat.component="openshift-pipelines-tekton-caches" \
-      name="openshift-pipelines/pipelines-tekton-caches-rhel8" \
+      name="openshift-pipelines/pipelines-tekton-caches-rhel9" \
       version=$VERSION \
       summary="Red Hat OpenShift Pipelines Tekton Caches" \
       maintainer="pipelines-extcomm@redhat.com" \
