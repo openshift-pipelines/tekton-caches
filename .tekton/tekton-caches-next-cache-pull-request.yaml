@@ -12,7 +12,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "release-v0.1.x" &&
-      ("upstream/***".pathChanged() || ".konflux/patches/***".pathChanged() || ".konflux/rpms/***".pathChanged() ||
+      ("***".pathChanged() ||
       ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
       ".tekton/tekton-caches-next-cache-pull-request.yaml".pathChanged())
   creationTimestamp: null
