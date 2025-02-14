@@ -11,5 +11,5 @@ metadata:
     appstudio.redhat.com/application: tekton-caches-main
 spec:
   image:
-   name: tekton-caches-main/cache
+   name: main/cache-rhel9
    visibility: public
