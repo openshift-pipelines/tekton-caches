@@ -28,7 +28,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches-next/cache:{{revision}}
+    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/next/cache-rhel9:{{revision}}
   - name: dockerfile
     value: .konflux/dockerfiles/cache.Dockerfile
   - name: prefetch-input
