@@ -3,7 +3,7 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: ImageRepository
 metadata:
-  name: tekton-caches-next-cache
+  name: next-cache-rhel9
   annotations:
     image-controller.appstudio.redhat.com/update-component-image: "true"
   labels:
