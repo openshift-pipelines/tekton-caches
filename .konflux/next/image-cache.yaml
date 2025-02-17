@@ -11,5 +11,5 @@ metadata:
     appstudio.redhat.com/application: tekton-caches-next
 spec:
   image:
-   name: next/cache-rhel9
+   name: next/cacherhel9
    visibility: public
