@@ -8,7 +8,7 @@ require (
 	github.com/codeclysm/extract/v4 v4.0.0
 	github.com/google/go-containerregistry v0.20.3
 	github.com/moby/patternmatcher v0.6.0
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.66.0
 	gocloud.dev v0.40.0
