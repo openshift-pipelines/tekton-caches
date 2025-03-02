@@ -2,7 +2,7 @@ module github.com/openshift-pipelines/tekton-caches
 
 go 1.23.0
 
-toolchain go1.23.2
+toolchain go1.24.0
 
 require (
 	github.com/codeclysm/extract/v4 v4.0.0
