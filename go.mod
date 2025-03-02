@@ -12,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.66.0
 	gocloud.dev v0.40.0
-	gotest.tools/v3 v3.5.1
+	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.32.1
 	k8s.io/apimachinery v0.32.1
 	k8s.io/client-go v0.31.4
