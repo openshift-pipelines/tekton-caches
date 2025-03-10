@@ -3,11 +3,7 @@ permissions:
 
 on:
   pull_request:
-    branches: [main]
   push:
-    branches: ["**"]
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       debug_enabled:
@@ -15,7 +11,6 @@ on:
         description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
         required: false
         default: false
-
 name: build-test-publish
 
 jobs:
