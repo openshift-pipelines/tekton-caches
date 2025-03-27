@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 
-	"golang.org/x/exp/slices"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -640,7 +640,7 @@ func validateTaskResultsVariables(ctx context.Context, steps []Step, results []T
 		resultsNames.Insert(r.Name)
 	}
 	for idx, step := range steps {
-		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariablesWithDetail(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
 	}
 	return errs
 }
@@ -790,7 +790,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 	errs := substitution.ValidateNoReferencesToUnknownVariables(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, prefix, vars).ViaField("script"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariablesWithDetail(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}
