@@ -50,7 +50,7 @@ jobs:
     if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     needs: [go]
     steps:
-      - uses: ko-build/setup-ko@v0.8
+      - uses: ko-build/setup-ko@v0.9
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - uses: azure/setup-helm@v4
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
@@ -126,6 +126,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: ko-build/setup-ko@v0.8
+      - uses: ko-build/setup-ko@v0.9
       - run: |
           ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/cache --platform linux/arm64,linux/amd64
