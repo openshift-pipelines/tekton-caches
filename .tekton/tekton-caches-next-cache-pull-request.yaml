@@ -5,7 +5,7 @@ metadata:
   annotations:
     pipelinesascode.tekton.dev/cancel-in-progress: "true" # Cancel in-progress pipelines
     pipelinesascode.tekton.dev/pipeline: "https://raw.githubusercontent.com/openshift-pipelines/operator/refs/heads/main/.tekton/docker-build-ta.yaml"
-    build.appstudio.openshift.io/repo: https://github.com/openshift-pipelines/tekton-caches?rev={{revision}}
+    build.appstudio.openshift.io/repo: https://github.com/openshift-pipelines/tekton-caches.git?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
@@ -17,7 +17,7 @@ metadata:
       ".tekton/tekton-caches-next-cache-pull-request.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: tekton-caches-next
+    appstudio.openshift.io/application: openshift-pipelines-core-next
     appstudio.openshift.io/component: tekton-caches-next-cache
     pipelines.appstudio.openshift.io/type: build
   name: tekton-caches-next-cache-on-pull-request
