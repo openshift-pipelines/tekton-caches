@@ -1,19 +1,16 @@
-# Generated for Release 1.18 by openshift-pipelines/hack. DO NOT EDIT.
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    pipelinesascode.tekton.dev/cancel-in-progress: "true" # Cancel in-progress pipelines
-    pipelinesascode.tekton.dev/pipeline: "https://raw.githubusercontent.com/openshift-pipelines/operator/refs/heads/main/.tekton/docker-build-ta.yaml"
     build.appstudio.openshift.io/repo: https://github.com/openshift-pipelines/tekton-caches.git?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "release-v0.1.x" &&
-      ("***".pathChanged() ||
-      ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
-      ".tekton/tekton-caches-1-18-cache-push.yaml".pathChanged())
+      == "release-v0.1.x" && ("***".pathChanged() || ".konflux/dockerfiles/cache.Dockerfile".pathChanged()
+      || ".tekton/tekton-caches-1-18-cache-push.yaml".pathChanged())
+    pipelinesascode.tekton.dev/pipeline: https://raw.githubusercontent.com/openshift-pipelines/operator/refs/heads/main/.tekton/docker-build-ta.yaml
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: openshift-pipelines-core-1-18
@@ -36,6 +33,8 @@ spec:
       {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-tekton-caches-1-18-cache
   workspaces:
   - name: git-auth
     secret:
