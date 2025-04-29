@@ -3,11 +3,11 @@ package oci
 import (
 	"context"
 	"fmt"
+	"github.com/openshift-pipelines/tekton-caches/internal/tar"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/codeclysm/extract/v4"
 	"github.com/google/go-containerregistry/pkg/crane"
 )
 
@@ -26,7 +26,7 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 		return err
 	}
 
-	f, err := os.Create(filepath.Join(folder, "cache.tar"))
+	f, err := os.Create(filepath.Join(folder, CacheFile))
 	if err != nil {
 		return err
 	}
@@ -36,17 +36,15 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 	}
 	f.Close()
 
-	f, err = os.Open(filepath.Join(folder, "cache.tar"))
+	f, err = os.Open(filepath.Join(folder, CacheFile))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	err = extract.Archive(ctx, f, folder, nil)
+	err = tar.ExtractTar(f, folder)
 	if err != nil {
 		return err
 	}
-	if err := os.Remove(filepath.Join(folder, "cache.tar")); err != nil {
-		return err
-	}
+	defer os.Remove(f.Name())
 	return nil
 }
