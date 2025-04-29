@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -86,7 +87,7 @@ func Compress(source, target string) error {
 }
 
 func ExtractTarGz(file *os.File, targetDir string) error {
-	fmt.Printf("Extracting tar.gz...%s", file.Name())
+	log.Printf("Extracting tar.gz...%s", file.Name())
 	gz, err := gzip.NewReader(file)
 	if err != nil {
 		return fmt.Errorf("error creating gzip reader: %w", err)
@@ -98,7 +99,7 @@ func ExtractTarGz(file *os.File, targetDir string) error {
 }
 
 func ExtractTar(file *os.File, targetDir string) error {
-	fmt.Printf("Extracting tar...%s", file.Name())
+	log.Printf("Extracting tar...%s", file.Name())
 	return extract(tar.NewReader(file), targetDir)
 }
 

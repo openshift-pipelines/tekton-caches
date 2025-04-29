@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestTaritAndUntar(t *testing.T) {
+func TestComressAndExtract(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "tarit_test")
 	if err != nil {
@@ -16,7 +16,7 @@ func TestTaritAndUntar(t *testing.T) {
 
 	// Create a test file structure
 	testDir := filepath.Join(tempDir, "foo-archive")
-	err = os.Mkdir(testDir, 0o755)
+	err = os.Mkdir(testDir, os.ModePerm)
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}

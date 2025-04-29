@@ -69,7 +69,11 @@ func Fetch(ctx context.Context, url url.URL, folder string) error {
 		log.Printf("error downloading cache: %s", err)
 		return err
 	}
-
+	// Reset cursor to beginning
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
 	if err := tar.ExtractTarGz(file, folder); err != nil {
 		log.Printf("error creating tar file: %s", err)
 		return err
