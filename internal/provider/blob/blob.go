@@ -70,7 +70,7 @@ func Fetch(ctx context.Context, url url.URL, folder string) error {
 		return err
 	}
 
-	if err := tar.Untar(ctx, file, folder); err != nil {
+	if err := tar.ExtractTarGz(file, folder); err != nil {
 		log.Printf("error creating tar file: %s", err)
 		return err
 	}
@@ -85,7 +85,7 @@ func Upload(ctx context.Context, url url.URL, folder string) error {
 		return err
 	}
 	defer os.Remove(file.Name())
-	if err := tar.Tarit(folder, file.Name()); err != nil {
+	if err := tar.Compress(folder, file.Name()); err != nil {
 		log.Printf("error creating tar file: %s", err)
 		return err
 	}
