@@ -30,7 +30,7 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 
 	switch u.Scheme {
 	case "oci":
-		return oci.Fetch(ctx, hash, source, folder, insecure)
+		return oci.Fetch(hash, source, folder, insecure)
 	case "s3", "gs":
 		return blob.Fetch(ctx, *u, folder)
 	default:

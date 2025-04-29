@@ -66,23 +66,23 @@ spec:
             ref:
               name: cache-fetch
             params:
-              - name: patterns
+              - name: PATTERNS
                 value: $(params.cachePatterns)
-              - name: source
+              - name: SOURCE
                 value: $(params.registry)/cache-go:{{hash}}
-              - name: cachePath
+              - name: CACHE_PATH
                 value: $(workspaces.source.path)/cache
-              - name: workingdir
+              - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: awsCredentialFile
+              - name: AWS_SHARED_CREDENTIALS_FILE
                 value: $(workspaces.cred.path)/credentials
-              - name: awsConfigFile
+              - name: AWS_CONFIG_FILE
                 value: $(workspaces.cred.path)/config
-              - name: googleCredentialsPath
+              - name: GOOGLE_APPLICATION_CREDENTIALS
                 value: $(workspaces.cred.path)/creds.json
 
           - name: run-go-build
-            workingDir: $(workspaces.source.path)/repo
+            WORKING_DIR: $(workspaces.source.path)/repo
             image: $(params.image)
             env:
               - name: GOCACHE
@@ -98,21 +98,21 @@ spec:
             ref:
               name: cache-upload
             params:
-              - name: patterns
+              - name: PATTERNS
                 value: $(params.cachePatterns)
-              - name: target
+              - name: TARGET
                 value: $(params.registry)/cache-go:{{hash}}
-              - name: cachePath
+              - name: CACHE_PATH
                 value: $(workspaces.source.path)/cache
-              - name: workingdir
+              - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: dockerConfig
+              - name: DOCKER_CONFIG
                 value: $(workspaces.cred.path)
-              - name: awsCredentialFile
+              - name: AWS_SHARED_CREDENTIALS_FILE
                 value: $(workspaces.cred.path)/credentials
-              - name: awsConfigFile
+              - name: AWS_CONFIG_FILE
                 value: $(workspaces.cred.path)/config
-              - name: force-cache-upload
+              - name: FORCE_CACHE_UPLOAD
                 value: $(params.force-cache-upload)
-              - name: googleCredentialsPath
+              - name: GOOGLE_APPLICATION_CREDENTIALS
                 value: $(workspaces.cred.path)/creds.json

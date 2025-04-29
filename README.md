@@ -74,7 +74,7 @@ tkn pipeline start pipeline-go --param repo_url=https://github.com/chmouel/gosme
   --param=buildCommand="make test" -w name=source,emptyDir= --use-param-defaults --showlog
 ```
 
-- You can as well force the upload of the cache with param `force-cache-upload=true` (default: false)
+- You can as well force the upload of the cache with param `FORCE_CACHE_UPLOAD=true` (default: false)
 - You can provide your own image with the param `image` (default to the latest docker.io `golang` image)
 - You can provide your own patterns for the hash to computer with the `cachePatterns` array parameter (default to `go.mod,go.sum`)
 
@@ -112,15 +112,15 @@ spec:
         name: cache-fetch
         # or using http resolver with https://raw.githubusercontent.com/openshift-pipelines/tekton-caches/main/tekton/cache-fetch.yaml
       params:
-      - name: patterns
+      - name: PATTERNS
         value: ["go.mod", "go.sum"]
-      - name: source
+      - name: SOURCE
         value: gs://my-bucket/some/folder
-      - name: cachePath
+      - name: CACHE_PATH
         value: $(workspace.source.path)/cache
-      - name: workingdir
+      - name: WORKING_DIR
         value: $(worksoaces.source.path)/repo
-      - name: googleCredentialsPath
+      - name: GOOGLE_APPLICATION_CREDENTIALS
         value: $(workspace.google-credentials.path)/$(params.serviceAccountName)
     - # […] something else like go build
     - # […] and then same thing with cache-upload

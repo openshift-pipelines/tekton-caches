@@ -1,17 +1,17 @@
 package oci
 
 import (
-	"context"
 	"fmt"
-	"github.com/openshift-pipelines/tekton-caches/internal/tar"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/openshift-pipelines/tekton-caches/internal/tar"
+
 	"github.com/google/go-containerregistry/pkg/crane"
 )
 
-func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
+func Fetch(hash, target, folder string, insecure bool) error {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Trying to fetch oci image %s in %s\n", cacheImageRef, folder)
 

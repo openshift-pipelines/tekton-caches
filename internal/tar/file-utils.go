@@ -3,10 +3,13 @@ package tar
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -86,7 +89,7 @@ func Compress(source, target string) error {
 }
 
 func ExtractTarGz(file *os.File, targetDir string) error {
-	fmt.Printf("Extracting tar.gz...%s", file.Name())
+	log.Printf("Extracting tar.gz...%s", file.Name())
 	gz, err := gzip.NewReader(file)
 	if err != nil {
 		return fmt.Errorf("error creating gzip reader: %w", err)
@@ -98,15 +101,20 @@ func ExtractTarGz(file *os.File, targetDir string) error {
 }
 
 func ExtractTar(file *os.File, targetDir string) error {
-	fmt.Printf("Extracting tar...%s", file.Name())
+	log.Printf("Extracting tar...%s", file.Name())
 	return extract(tar.NewReader(file), targetDir)
 }
 
 func extract(tr *tar.Reader, targetDir string) error {
-	os.RemoveAll(targetDir)
+	baseDir, err := filepath.Abs(targetDir)
+	if err != nil {
+		return err
+	}
+	os.RemoveAll(baseDir)
+
 	for {
 		header, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -114,8 +122,10 @@ func extract(tr *tar.Reader, targetDir string) error {
 		}
 
 		// Build the full path
-		// #nosec
-		path := filepath.Join(targetDir, header.Name)
+		path, err := safePath(baseDir, header.Name)
+		if err != nil {
+			return err
+		}
 		switch header.Typeflag {
 		case tar.TypeDir:
 			// Ensure directory exists
@@ -142,15 +152,22 @@ func extract(tr *tar.Reader, targetDir string) error {
 				outFile.Close()
 				return fmt.Errorf("error while copying file %s: %w", path, err)
 			}
-			outFile.Close()
-		case tar.TypeSymlink:
-			if err := os.Symlink(header.Linkname, path); err != nil {
-				return err
+			if err = outFile.Close(); err != nil {
+				return fmt.Errorf("error closing file %s: %w", path, err)
 			}
-
+		case tar.TypeSymlink:
+			// Skip Symlinks as they may cause security vulnerability
 		default:
 			return fmt.Errorf("unsupported file type %v", header.Typeflag)
 		}
 	}
 	return nil
+}
+
+func safePath(basePath, targetPath string) (string, error) {
+	if strings.Contains(targetPath, "..") {
+		return "", fmt.Errorf("target path contains '..': %s", targetPath)
+	}
+	combinedPath := filepath.Join(basePath, targetPath)
+	return combinedPath, nil
 }

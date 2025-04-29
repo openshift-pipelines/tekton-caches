@@ -65,16 +65,16 @@ spec:
             ref:
               name: cache-fetch
             params:
-             - name: patterns
-               value: $(params.cachePatterns)
-             - name: source
-               value: $(params.registry)/cache-go:{{hash}}
-             - name: cachePath
-               value: $(workspaces.source.path)/cache
-             - name: workingdir
-               value: $(workspaces.source.path)/repo
-             - name: googleCredentialsPath
-               value: $(workspaces.cred.path)/credential-configuration.json
+              - name: PATTERNS
+                value: $(params.cachePatterns)
+              - name: source
+                value: $(params.registry)/cache-go:{{hash}}
+              - name: CACHE_PATH
+                value: $(workspaces.source.path)/cache
+              - name: WORKING_DIR
+                value: $(workspaces.source.path)/repo
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: $(workspaces.cred.path)/credential-configuration.json
 
           - name: run-go-build
             workingDir: $(workspaces.source.path)/repo
@@ -93,15 +93,15 @@ spec:
             ref:
               name: cache-upload
             params:
-              - name: patterns
+              - name: PATTERNS
                 value: $(params.cachePatterns)
-              - name: target
+              - name: TARGET
                 value: $(params.registry)/cache-go:{{hash}}
-              - name: cachePath
+              - name: CACHE_PATH
                 value: $(workspaces.source.path)/cache
-              - name: workingdir
+              - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: googleCredentialsPath
+              - name: GOOGLE_APPLICATION_CREDENTIALS
                 value: $(workspaces.cred.path)/credential-configuration.json
-              - name: force-cache-upload
+              - name: FORCE_CACHE_UPLOAD
                 value: $(params.force-cache-upload)
