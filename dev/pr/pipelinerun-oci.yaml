@@ -13,7 +13,7 @@ spec:
       value: main
       # This uses S3 bucket  to upload Caches
     - name: registry
-      value: oci://docker.io/<username>
+      value: oci://image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)
     - name: buildCommand
       value: go build -v ./
     - name: image

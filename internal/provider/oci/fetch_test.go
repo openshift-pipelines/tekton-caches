@@ -29,16 +29,17 @@ func TestFetch(t *testing.T) {
 	folder := t.TempDir()
 	insecure := false
 
-	img, err := random.Image(1024, 5)
-	assert.NoError(t, err, "Failed to create random image")
-
-	err = crane.Push(img, fmt.Sprintf("%s/test/crane:%s", u.Host, hash))
-	assert.NoError(t, err, "Failed to push the image")
-
+	// Make Dir
 	err = os.MkdirAll(folder, os.ModePerm)
 	assert.NoError(t, err, "Error creating folder for cache")
 
-	err = Fetch(context.Background(), hash, target, folder, insecure)
+	// Upload th the folder to target
+	err = Upload(context.Background(), hash, target, folder, insecure)
+	assert.NoError(t, err, "Failed to push the image")
+
+	// Fetch The cache from source
+	source := target
+	err = Fetch(hash, source, folder, insecure)
 	assert.NoError(t, err, "Fetch should not return any error")
 
 	cacheFilePath := filepath.Join(folder, "cache.tar")
@@ -59,7 +60,7 @@ func TestFetchImageNotFound(t *testing.T) {
 	folder := t.TempDir()
 	insecure := false
 
-	err = Fetch(context.Background(), hash, target, folder, insecure)
+	err = Fetch(hash, target, folder, insecure)
 	assert.Error(t, err, "Fetch should return an error for nonexistent image")
 	assert.True(t,
 		containsAny(err.Error(), []string{"NAME_UNKNOWN", "MANIFEST_UNKNOWN"}),
@@ -86,7 +87,7 @@ func TestFetchInvalidFolder(t *testing.T) {
 	defer os.RemoveAll(folder)
 	insecure := false
 
-	err = Fetch(context.Background(), hash, target, folder, insecure)
+	err = Fetch(hash, target, folder, insecure)
 	assert.Error(t, err, "Fetch should return an error when folder is not writable")
 	assert.Contains(t, err.Error(), "permission denied", "Error should indicate permission issues for the folder")
 }
