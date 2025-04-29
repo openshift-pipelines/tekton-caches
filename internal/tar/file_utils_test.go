@@ -1,7 +1,6 @@
 package tar
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,11 +27,11 @@ func TestTaritAndUntar(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Test Tarit
+	// Test Compress
 	tarFile := filepath.Join(tempDir, "test.tar.gz")
-	err = Tarit(testDir, tarFile)
+	err = Compress(testDir, tarFile)
 	if err != nil {
-		t.Fatalf("Tarit failed: %v", err)
+		t.Fatalf("Compress failed: %v", err)
 	}
 
 	// Check if the tar file was created
@@ -40,7 +39,7 @@ func TestTaritAndUntar(t *testing.T) {
 		t.Fatalf("Tar file was not created")
 	}
 
-	// Test Untar
+	// Test ExtractTarGz
 	extractDir := filepath.Join(tempDir, "bar-archive-extracted")
 	err = os.Mkdir(extractDir, 0o755)
 	if err != nil {
@@ -53,9 +52,9 @@ func TestTaritAndUntar(t *testing.T) {
 	}
 	defer tarFileHandle.Close()
 
-	err = Untar(context.Background(), tarFileHandle, extractDir)
+	err = ExtractTarGz(tarFileHandle, extractDir)
 	if err != nil {
-		t.Fatalf("Untar failed: %v", err)
+		t.Fatalf("ExtractTarGz failed: %v", err)
 	}
 
 	// Check if the extracted file exists and has the correct content
