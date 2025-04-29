@@ -14,8 +14,11 @@ import (
 func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
 	// check that folder exists or automatically create it
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		if err := os.MkdirAll(folder, 0o755); err != nil {
+		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
 			return fmt.Errorf("failed to create folder: %w", err)
+		}
+		if err := os.Chmod(folder, os.ModePerm); err != nil {
+			return fmt.Errorf("failed to change permissions of folder: %w", err)
 		}
 	}
 	target = strings.ReplaceAll(target, "{{hash}}", hash)
