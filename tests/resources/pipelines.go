@@ -34,10 +34,9 @@ func Succeed(name string) ConditionAccessorFn {
 			switch c.Status {
 			case corev1.ConditionTrue:
 				return true, nil
-			case corev1.ConditionUnknown:
-				fallthrough
 			case corev1.ConditionFalse:
 				return true, fmt.Errorf("%q failed", name)
+			case corev1.ConditionUnknown:
 			}
 		}
 		return false, nil
