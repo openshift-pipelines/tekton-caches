@@ -22,5 +22,7 @@ else
 fi
 
 openssl rand -base64 20 > /tmp/test
+kubectl delete secret creds --ignore-not-found
 kubectl create secret generic creds   --from-literal=GCP_APPLICATION_CREDENTIALS=/tmp/test
+kubectl delete pr --all
 
