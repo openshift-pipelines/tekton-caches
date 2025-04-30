@@ -31,9 +31,12 @@ func Succeed(name string) ConditionAccessorFn {
 	return func(ca apis.ConditionAccessor) (bool, error) {
 		c := ca.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
-			if c.Status == corev1.ConditionTrue {
+			switch c.Status {
+			case corev1.ConditionTrue:
 				return true, nil
-			} else if c.Status == corev1.ConditionFalse {
+			case corev1.ConditionUnknown:
+				fallthrough
+			case corev1.ConditionFalse:
 				return true, fmt.Errorf("%q failed", name)
 			}
 		}
