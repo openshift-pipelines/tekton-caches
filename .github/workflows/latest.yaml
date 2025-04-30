@@ -71,7 +71,7 @@ jobs:
 
       - uses: tektoncd/actions/setup-tektoncd@main
         with:
-          pipeline_version: v0.61.1
+          pipeline_version: v0.70.0
           feature_flags: '{"enable-step-actions": "true"}'
           setup_registry: false
       - name: tests
