@@ -40,6 +40,8 @@ spec:
       {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-tekton-caches-main-cache
   workspaces:
   - name: git-auth
     secret:
