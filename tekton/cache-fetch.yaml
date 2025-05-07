@@ -24,7 +24,7 @@ spec:
         Path where to extract the cache content.
         It can refer any folder, backed by a workspace or a volume, or nothing.
       type: string
-    - name: WORKINGDIR
+    - name: WORKING_DIR
       description: |
         The working dir from where the files patterns needs to be taken
       type: string
@@ -33,6 +33,12 @@ spec:
         Whether to use insecure mode for fetching the cache
       type: string
       default: "false"
+    - name: DOCKER_CONFIG
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
     - name: GOOGLE_APPLICATION_CREDENTIALS
       description: |
         The path where to find the google credentials. If left empty, it is ignored.
@@ -54,7 +60,7 @@ spec:
       type: string
       default: ""
   results: # Any result to "publish" ?
-    - name: FETCHED
+    - name: fetched
       description: |
         Whether a cache was fetched or not (true/false). This step won't fail if it didn't manage to fetch cache. This results allows the next step to act whether something was fetched or not.
   env:
@@ -62,10 +68,12 @@ spec:
       value: $(params.SOURCE)
     - name: PARAM_CACHE_PATH
       value: $(params.CACHE_PATH)
-    - name: PARAM_WORKINGDIR
-      value: $(params.WORKINGDIR)
+    - name: PARAM_WORKING_DIR
+      value: $(params.WORKING_DIR)
     - name: PARAM_INSECURE
       value: $(params.INSECURE)
+    - name: DOCKER_CONFIG
+      value: $(params.DOCKER_CONFIG)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.GOOGLE_APPLICATION_CREDENTIALS)
     - name: AWS_CONFIG_FILE
@@ -78,3 +86,20 @@ spec:
   args: ["$(params.PATTERNS[*])"]
   script: |
     #!/bin/sh
+    PATTERN_FLAGS=""
+    echo "Patterns: $*"
+    for p in $*; do
+      PATTERN_FLAGS="${PATTERN_FLAGS} --pattern ${p}"
+    done
+    
+    set -x
+    /ko-app/cache fetch ${PATTERN_FLAGS} \
+                        --source ${PARAM_SOURCE} \
+                        --folder ${PARAM_CACHE_PATH} \
+                        --insecure ${PARAM_INSECURE} \
+                        --workingdir ${PARAM_WORKING_DIR}
+    if [ $? -eq 0 ]; then
+      echo -n true > $(step.results.fetched.path)
+    else
+      echo -n false > $(step.results.fetched.path)
+    fi

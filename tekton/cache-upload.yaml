@@ -24,7 +24,7 @@ spec:
         Path where to extract the cache content.
         It can refer any folder, backed by a workspace or a volume, or nothing.
       type: string
-    - name: WORKINGDIR
+    - name: WORKING_DIR
       description: |
         The working dir from where the files patterns needs to be taken
       type: string
@@ -43,6 +43,12 @@ spec:
         Whether to force the cache upload even if it was fetched previously
       type: string
       default: "false"
+    - name: DOCKER_CONFIG
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
     - name: GOOGLE_APPLICATION_CREDENTIALS
       description: |
         The path where to find the google credentials. If left empty, it is ignored.
@@ -68,14 +74,16 @@ spec:
       value: $(params.TARGET)
     - name: PARAM_CACHE_PATH
       value: $(params.CACHE_PATH)
-    - name: PARAM_WORKINGDIR
-      value: $(params.WORKINGDIR)
+    - name: PARAM_WORKING_DIR
+      value: $(params.WORKING_DIR)
     - name: PARAM_INSECURE
       value: $(params.INSECURE)
     - name: RESULT_CACHE_FETCHED
       value: $(params.FETCHED)
     - name: PARAM_FORCE_CACHE_UPLOAD
       value: $(params.FORCE_CACHE_UPLOAD)
+    - name: DOCKER_CONFIG
+      value: $(params.DOCKER_CONFIG)
     - name: GOOGLE_APPLICATION_CREDENTIALS
       value: $(params.GOOGLE_APPLICATION_CREDENTIALS)
     - name: AWS_CONFIG_FILE
@@ -105,4 +113,4 @@ spec:
                         --target ${PARAM_TARGET} \
                         --folder ${PARAM_CACHE_PATH} \
                         --insecure ${PARAM_INSECURE} \
-                        --workingdir ${PARAM_WORKINGDIR}
+                        --workingdir ${PARAM_WORKING_DIR}
