@@ -10,7 +10,7 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" &&
+      == "release-v0.2.x" &&
       ("***".pathChanged() ||
       ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
       ".tekton/tekton-caches-next-cache-push.yaml".pathChanged())
@@ -31,15 +31,13 @@ spec:
     value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/next/cache-rhel9:{{revision}}
   - name: dockerfile
     value: .konflux/dockerfiles/cache.Dockerfile
-  - name: build-platforms
-    value:
-      - linux/x86_64
-      - linux-m2xlarge/arm64
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-tekton-caches-next-cache
   workspaces:
   - name: git-auth
     secret:
