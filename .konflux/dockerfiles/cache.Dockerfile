@@ -6,7 +6,8 @@ FROM $GO_BUILDER AS builder
 WORKDIR /go/src/github.com/openshift-pipelines/tekton-caches
 COPY . .
 
-RUN go build -v -o /tmp/cache  ./cmd/cache
+ENV GOEXPERIMENT=strictfipsruntime
+RUN go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
 ARG VERSION=tekton-caches-main
