@@ -10,7 +10,7 @@ ENV GOEXPERIMENT=strictfipsruntime
 RUN go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
-ARG VERSION=tekton-caches-main
+ARG VERSION=tekton-caches-0.2
 
 COPY --from=builder /tmp/cache /ko-app/cache
 
