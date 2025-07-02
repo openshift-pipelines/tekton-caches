@@ -33,6 +33,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"gocloud.dev/internal/gcerr"
 	"hash"
 	"io"
 	"net/url"
@@ -195,10 +196,10 @@ func (b *bucket) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driv
 }
 
 // As implements driver.As.
-func (b *bucket) As(i interface{}) bool { return false }
+func (b *bucket) As(i any) bool { return false }
 
 // As implements driver.ErrorAs.
-func (b *bucket) ErrorAs(err error, i interface{}) bool { return false }
+func (b *bucket) ErrorAs(err error, i any) bool { return false }
 
 // Attributes implements driver.Attributes.
 func (b *bucket) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
@@ -223,7 +224,7 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 	}
 
 	if opts.BeforeRead != nil {
-		if err := opts.BeforeRead(func(interface{}) bool { return false }); err != nil {
+		if err := opts.BeforeRead(func(any) bool { return false }); err != nil {
 			return nil, err
 		}
 	}
@@ -272,7 +273,7 @@ func (r *reader) Attributes() *driver.ReaderAttributes {
 	return &r.attrs
 }
 
-func (r *reader) As(i interface{}) bool { return false }
+func (r *reader) As(i any) bool { return false }
 
 // NewTypedWriter implements driver.NewTypedWriter.
 func (b *bucket) NewTypedWriter(ctx context.Context, key, contentType string, opts *driver.WriterOptions) (driver.Writer, error) {
@@ -283,7 +284,7 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key, contentType string, op
 	defer b.mu.Unlock()
 
 	if opts.BeforeWrite != nil {
-		if err := opts.BeforeWrite(func(interface{}) bool { return false }); err != nil {
+		if err := opts.BeforeWrite(func(any) bool { return false }); err != nil {
 			return nil, err
 		}
 	}
@@ -299,6 +300,7 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key, contentType string, op
 		metadata:    md,
 		opts:        opts,
 		md5hash:     md5.New(),
+		ifNotExist:  opts.IfNotExist,
 	}, nil
 }
 
@@ -312,7 +314,8 @@ type writer struct {
 	buf         bytes.Buffer
 	// We compute the MD5 hash so that we can store it with the file attributes,
 	// not for verification.
-	md5hash hash.Hash
+	md5hash    hash.Hash
+	ifNotExist bool
 }
 
 func (w *writer) Write(p []byte) (n int, err error) {
@@ -355,6 +358,10 @@ func (w *writer) Close() error {
 	w.b.mu.Lock()
 	defer w.b.mu.Unlock()
 	if prev := w.b.blobs[w.key]; prev != nil {
+		if w.ifNotExist {
+			err := fmt.Errorf("a blob already exists for key %q", w.key)
+			return gcerr.New(gcerrors.FailedPrecondition, err, 1, "IfNotExist precondition failed")
+		}
 		entry.Attributes.CreateTime = prev.Attributes.CreateTime
 	}
 	w.b.blobs[w.key] = entry
@@ -367,7 +374,7 @@ func (b *bucket) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.C
 	defer b.mu.Unlock()
 
 	if opts.BeforeCopy != nil {
-		if err := opts.BeforeCopy(func(interface{}) bool { return false }); err != nil {
+		if err := opts.BeforeCopy(func(any) bool { return false }); err != nil {
 			return err
 		}
 	}
