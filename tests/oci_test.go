@@ -73,16 +73,14 @@ func TestCacheOCI(t *testing.T) {
 	tc := client.TektonClient(t)
 
 	// Install the pipeline example
-	if _, err := tc.Pipelines(resources.DefaultNamespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
+	if p, err = tc.Pipelines(resources.DefaultNamespace).Create(ctx, p, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Error creating Pipeline: %v", err)
 	}
 
-	_ = tc.PipelineRuns(resources.DefaultNamespace).Delete(ctx, pr.GetName(), metav1.DeleteOptions{
-		PropagationPolicy: &resources.DeletePolicy,
-	})
-
 	// Install the pipelineRun example
-	if _, err = tc.PipelineRuns(resources.DefaultNamespace).Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	pr.Spec.PipelineRef = &tektonv1.PipelineRef{Name: p.Name}
+	t.Log("Creating a PipelineRun", pr.Spec.PipelineRef.Name)
+	if pr, err = tc.PipelineRuns(resources.DefaultNamespace).Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Error creating PipelineRun: %v", err)
 	}
 
@@ -91,7 +89,7 @@ func TestCacheOCI(t *testing.T) {
 	}
 
 	// Get the taskrun
-	tr, err := tc.TaskRuns(resources.DefaultNamespace).Get(ctx, "pipelinerun-oci-test-build-task", metav1.GetOptions{})
+	tr, err := tc.TaskRuns(resources.DefaultNamespace).Get(ctx, pr.Name+"-build-task", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error creating PipelineRun: %v", err)
 	}
