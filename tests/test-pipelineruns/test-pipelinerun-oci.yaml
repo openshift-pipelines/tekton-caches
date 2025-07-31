@@ -1,0 +1,25 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-oci-test
+spec:
+  pipelineRef:
+    name: pipeline
+  params:
+    - name: repo_url
+      value: https://github.com/chmouel/go-helloworld
+    - name: revision
+      value: main
+      # This uses S3 bucket  to upload Caches
+    - name: registry
+      value: oci://ttl.sh
+    - name: buildCommand
+      value: go build -v ./
+    - name: image
+      value: golang:1.21
+  workspaces:
+    - name: cred
+      emptyDir: {}
+    - name: source
+      emptyDir: {}

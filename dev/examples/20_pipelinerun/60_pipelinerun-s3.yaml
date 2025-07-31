@@ -1,0 +1,26 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-s3-
+spec:
+  pipelineRef:
+    name: pipeline-aws
+  params:
+    - name: repo_url
+      value: https://github.com/chmouel/go-helloworld
+    - name: revision
+      value: main
+      # This uses S3 bucket  to upload Caches
+    - name: registry
+      value: s3://tekton-caches
+    - name: buildCommand
+      value: go build -v ./
+    - name: image
+      value: golang:1.21
+  workspaces:
+    - name: cred
+      secret:
+        secretName: aws-cred
+    - name: source
+      emptyDir: {}

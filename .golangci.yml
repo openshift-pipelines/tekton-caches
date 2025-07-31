@@ -1,0 +1,99 @@
+version: "2"
+run:
+  build-tags:
+    - e2e
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - forbidigo
+    - forcetypeassert
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - gochecksumtype
+    - gocritic
+    - godot
+    - goheader
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosmopolitan
+    - grouper
+    - importas
+    - loggercheck
+    - makezero
+    - mirror
+    - misspell
+    - nakedret
+    - nilerr
+    - noctx
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - revive
+    - sloglint
+    - staticcheck
+    - tagalign
+    - testableexamples
+    - tparallel
+    - unparam
+    - usestdlibvars
+    - whitespace
+    - zerologlint
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/tektoncd/pipeline/vendor/go.uber.org/zap.SugaredLogger).Sync
+        - flag.Set
+        - logger.Sync
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.Closer).Close
+        - updateConfigMap
+    gocritic:
+      disabled-checks:
+        - unlambda
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - gosec
+        path: _test\.go
+    paths:
+      - vendor
+      - pkg/provider/gitea/structs
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - pkg/provider/gitea/structs
+      - third_party$
+      - builtin$
+      - examples$

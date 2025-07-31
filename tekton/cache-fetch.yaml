@@ -1,0 +1,105 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: cache-fetch
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.56.0"
+    tekton.dev/tags: "cache"
+spec:
+  params:
+    - name: PATTERNS
+      description: |
+        Regular expression to select files to include to compute the hash.
+        For example, in the case of a Go project, you can use `go.mod` for this, so the value would be "**/go.sum" (to work with possible sub go modules as well).
+      type: array
+    - name: SOURCE
+      description: |
+        The source from where the cache should be fetched. It's a URI with the scheme defining the "provider". In addition, one can add a {{hash}} variable to use the computed hash in the reference (oci image tags, path in s3, …)
+        Currently supported:
+        - oci:// (e.g. oci://quay.io/vdemeester/go-cache:{{hash}}
+        - s3:// (e.g. s3://
+      type: string
+    - name: CACHE_PATH
+      description: |
+        Path where to extract the cache content.
+        It can refer any folder, backed by a workspace or a volume, or nothing.
+      type: string
+    - name: WORKING_DIR
+      description: |
+        The working dir from where the files patterns needs to be taken
+      type: string
+    - name: INSECURE
+      description: |
+        Whether to use insecure mode for fetching the cache
+      type: string
+      default: "false"
+    - name: DOCKER_CONFIG
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      description: |
+        The path where to find the google credentials. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: AWS_CONFIG_FILE
+      description: |
+        The path to the aws config file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      description: |
+        The path to find the aws credentials file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: BLOB_QUERY_PARAMS
+      description: |
+        Blob Query Params to support configure s3, gcs and azure. This is optional unless some additional features of storage providers are required like s3 acceleration, fips, pathstyle,etc
+      type: string
+      default: ""
+  results: # Any result to "publish" ?
+    - name: fetched
+      description: |
+        Whether a cache was fetched or not (true/false). This step won't fail if it didn't manage to fetch cache. This results allows the next step to act whether something was fetched or not.
+  env:
+    - name: PARAM_SOURCE
+      value: $(params.SOURCE)
+    - name: PARAM_CACHE_PATH
+      value: $(params.CACHE_PATH)
+    - name: PARAM_WORKING_DIR
+      value: $(params.WORKING_DIR)
+    - name: PARAM_INSECURE
+      value: $(params.INSECURE)
+    - name: DOCKER_CONFIG
+      value: $(params.DOCKER_CONFIG)
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: $(params.GOOGLE_APPLICATION_CREDENTIALS)
+    - name: AWS_CONFIG_FILE
+      value: $(params.AWS_CONFIG_FILE)
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      value: $(params.AWS_SHARED_CREDENTIALS_FILE)
+    - name: BLOB_QUERY_PARAMS
+      value: $(params.BLOB_QUERY_PARAMS)
+  image: quay.io/openshift-pipeline/pipelines-cache-rhel9:next
+  args: ["$(params.PATTERNS[*])"]
+  script: |
+    #!/bin/sh
+    PATTERN_FLAGS=""
+    echo "Patterns: $*"
+    for p in $*; do
+      PATTERN_FLAGS="${PATTERN_FLAGS} --pattern ${p}"
+    done
+    
+    set -x
+    /ko-app/cache fetch ${PATTERN_FLAGS} \
+                        --source ${PARAM_SOURCE} \
+                        --folder ${PARAM_CACHE_PATH} \
+                        --insecure ${PARAM_INSECURE} \
+                        --workingdir ${PARAM_WORKING_DIR}
+    if [ $? -eq 0 ]; then
+      echo -n true > $(step.results.fetched.path)
+    else
+      echo -n false > $(step.results.fetched.path)
+    fi

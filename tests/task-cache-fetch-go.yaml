@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cache-fetch-go
+spec:
+  workspaces:
+  - name: source
+  - name: gocache
+  - name: gomodcache
+  params:
+    - name: gitURL
+      type: string
+    - name: gitRevision
+      type: string
+      default: "main"
+    - name: cachePatterns
+      type: array
+      default: []
+    - name: cacheURIBase
+  steps:
+  - name: git-clone
+    ref:
+      name: git-batch-merge
+    params:
+      - name: url
+        value: $(params.gitURL)
+      - name: revision
+        value: $(params.gitRevision)
+      - name: sourcePath
+        value: $(workspaces.source.path)
+  - name: gocache-fetch
+    ref:
+      name: cache-fetch
+    params:
+      - name: patterns
+        value: $(params.cachePatterns)
+      - name: source
+        value: $(params.cacheURIBase)-go:{{hash}}
+      - name: cachePath
+        value: $(workspaces.gocache.path)
+      - name: workingdir
+        value: $(workspaces.source.path)
+  - name: gomodcache-fetch
+    ref:
+      name: cache-fetch
+    params:
+      - name: patterns
+        value: $(params.cachePatterns)
+      - name: source
+        value: $(params.cacheURIBase)-gomod:{{hash}}
+      - name: cachePath
+        value: $(workspaces.gomodcache.path)
+      - name: workingdir
+        value: $(workspaces.source.path)
+  - name: go-build
+    image: cgr.dev/chainguard/go
+    workingDir: $(workspaces.source.path)
+    script: |
+      #!/bin/sh
+      set -ex
+
+      export GOCACHE=$(workspaces.gocache.path)
+      export GOMODCACHE=$(workspaces.gomodcache.path)
+
+      go env
+      go build -v .
+
+      du -sk -h $(go env GOCACHE)
+      du -sk -h $(go env GOMODCACHE)

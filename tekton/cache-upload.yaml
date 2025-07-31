@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: cache-upload
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.56.0"
+    tekton.dev/tags: "cache"
+spec:
+  params:
+    - name: PATTERNS
+      description: |
+        Regular expression to select files to include to compute the hash.
+        For example, in the case of a Go project, you can use `go.mod` for this, so the value would be "**/go.sum" (to work with possible sub go modules as well).
+      type: array
+    - name: TARGET
+      description: |
+        The target from where the cache should be uploaded. It's a URI with the scheme defining the "provider". In addition, one can add a {{hash}} variable to use the computed hash in the reference (oci image tags, path in s3, …)
+        Currently supported:
+        - oci:// (e.g. oci://quay.io/vdemeester/go-cache:{{hash}}
+        - s3:// (e.g. s3://
+      type: string
+    - name: CACHE_PATH
+      description: |
+        Path where to extract the cache content.
+        It can refer any folder, backed by a workspace or a volume, or nothing.
+      type: string
+    - name: WORKING_DIR
+      description: |
+        The working dir from where the files patterns needs to be taken
+      type: string
+    - name: INSECURE
+      description: |
+        Whether to use insecure mode for fetching the cache
+      type: string
+      default: "false"
+    - name: FETCHED
+      description: |
+        Wether cache was fetched or not previously
+      type: string
+      default: "false"
+    - name: FORCE_CACHE_UPLOAD
+      description: |
+        Whether to force the cache upload even if it was fetched previously
+      type: string
+      default: "false"
+    - name: DOCKER_CONFIG
+      description: |
+        The path to find the docker config. If left empty, it is ignored.
+        If already using service account based docker secret, then this isn't required.
+      type: string
+      default: ""
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      description: |
+        The path where to find the google credentials. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: AWS_CONFIG_FILE
+      description: |
+        The path to the aws config file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      description: |
+        The path to find the aws credentials file. If left empty, it is ignored.
+      type: string
+      default: ""
+    - name: BLOB_QUERY_PARAMS
+      description: |
+        Blob Query Params to support configure s3, gcs and azure. This is optional unless some additional features of storage providers are required like s3 acceleration, fips, pathstyle,etc
+      type: string
+      default: ""
+  env:
+    - name: PARAM_TARGET
+      value: $(params.TARGET)
+    - name: PARAM_CACHE_PATH
+      value: $(params.CACHE_PATH)
+    - name: PARAM_WORKING_DIR
+      value: $(params.WORKING_DIR)
+    - name: PARAM_INSECURE
+      value: $(params.INSECURE)
+    - name: RESULT_CACHE_FETCHED
+      value: $(params.FETCHED)
+    - name: PARAM_FORCE_CACHE_UPLOAD
+      value: $(params.FORCE_CACHE_UPLOAD)
+    - name: DOCKER_CONFIG
+      value: $(params.DOCKER_CONFIG)
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      value: $(params.GOOGLE_APPLICATION_CREDENTIALS)
+    - name: AWS_CONFIG_FILE
+      value: $(params.AWS_CONFIG_FILE)
+    - name: AWS_SHARED_CREDENTIALS_FILE
+      value: $(params.AWS_SHARED_CREDENTIALS_FILE)
+    - name: BLOB_QUERY_PARAMS
+      value: $(params.BLOB_QUERY_PARAMS)
+  image: quay.io/openshift-pipeline/pipelines-cache-rhel9:next
+  args: ["$(params.PATTERNS[*])"]
+  script: |
+    #!/usr/bin/env sh
+    set -x
+    if [[ ${PARAM_FORCE_CACHE_UPLOAD} == "false" && ${RESULT_CACHE_FETCHED} == "true" ]]; then
+      echo "no need to upload cache"
+      exit 0
+    fi
+
+    PATTERN_FLAGS=""
+    echo "Patterns: $*"
+    for p in $*; do
+      PATTERN_FLAGS="${PATTERN_FLAGS} --pattern ${p}"
+    done
+
+    set -ex
+    /ko-app/cache upload ${PATTERN_FLAGS} \
+                        --target ${PARAM_TARGET} \
+                        --folder ${PARAM_CACHE_PATH} \
+                        --insecure ${PARAM_INSECURE} \
+                        --workingdir ${PARAM_WORKING_DIR}

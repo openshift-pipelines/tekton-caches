@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcs-emulator
+  namespace: tekton-pipelines
+spec:
+  selector:
+    matchLabels:
+      run: gcs-emulator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: gcs-emulator
+    spec:
+      containers:
+      - name: gcs-emulator
+        image: quay.io/khrm/gcse-emulator:latest
+        volumeMounts:
+          - mountPath: /data
+            name: data
+        ports:
+        - containerPort: 9000
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gcs-emulator
+  namespace: tekton-pipelines
+  labels:
+    run: gcs-emulator
+spec:
+  ports:
+  - port: 9000
+    protocol: TCP
+  selector:
+    run: gcs-emulator

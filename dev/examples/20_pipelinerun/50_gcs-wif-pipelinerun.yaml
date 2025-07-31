@@ -1,0 +1,34 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-gcs-
+spec:
+  pipelineRef:
+    name: pipeline-wif
+  params:
+    - name: repo_url
+      value: https://github.com/chmouel/go-helloworld
+    - name: revision
+      value: main
+      # This uses GCS bucket  to upload Caches
+    - name: registry
+      value: gs://tekton-caches
+    - name: buildCommand
+      value: go build -v ./
+    - name: image
+      value: golang:1.21
+  workspaces:
+    - name: source
+      emptyDir: { }
+    - name: cred
+      secret:
+        secretName: gcs-cred
+    - name: token
+      projected:
+        sources:
+          - serviceAccountToken:
+              audience: openshift
+              expirationSeconds: 3600
+              path: token
+
