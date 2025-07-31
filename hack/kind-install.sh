@@ -14,6 +14,8 @@ export DOCKER=${DOCKER:-docker}
 TMPD=$(mktemp -d /tmp/.GITXXXX)
 REG_PORT='5000'
 REG_NAME='kind-registry'
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
 # SUDO=sudo
 # [[ $(uname -s) == "Darwin" ]] && {
 # SUDO=
@@ -34,9 +36,9 @@ function start_registry() {
     running="$(${DOCKER} inspect -f '{{.State.Running}}' ${REG_NAME} 2>/dev/null || echo false)"
 
     if [[ ${running} != "true" ]]; then
-	${DOCKER} rm -f kind-registry || true
+	${DOCKER} rm -f "${REG_NAME}" || true
 	${DOCKER} run \
-		  -d --restart=always -p "127.0.0.1:${REG_PORT}:5000" \
+		  -d --restart=always -p "${REG_PORT}:5000" \
 		  -e REGISTRY_HTTP_SECRET=secret \
 		  --name "${REG_NAME}" \
 		  registry:2
@@ -46,19 +48,11 @@ function start_registry() {
 
 function install_kind() {
     if [[ ${DOCKER} == "podman" ]]; then
-	export KIND_EXPERIMENTAL_PROVIDER=podman
+	    export KIND_EXPERIMENTAL_PROVIDER=podman
     fi
     ${SUDO} $kind delete cluster --name ${KIND_CLUSTER_NAME} || true
     sed "s,%DOCKERCFG%,${HOME}/.docker/config.json," kind.yaml >${TMPD}/kconfig.yaml
-
-    cat <<EOF >>${TMPD}/kconfig.yaml
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${REG_PORT}"]
-    endpoint = ["http://${REG_NAME}:5000"]
-EOF
-
-    ${SUDO} ${kind} create cluster --name ${KIND_CLUSTER_NAME} --config ${TMPD}/kconfig.yaml
+    ${SUDO} ${kind} create cluster --name ${KIND_CLUSTER_NAME} --config ${SCRIPT_DIR}/kind.yaml
     mkdir -p $(dirname ${KUBECONFIG})
     ${SUDO} ${kind} --name ${KIND_CLUSTER_NAME} get kubeconfig >${KUBECONFIG}
 

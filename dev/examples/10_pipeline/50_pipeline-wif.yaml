@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  generateName: pipeline-
+  name: pipeline-wif
 spec:
   params:
     - name: repo_url
@@ -20,24 +20,21 @@ spec:
     - name: image
       type: string
       default: golang:latest
-    - name: FORCE_CACHE_UPLOAD
+    - name: force-cache-upload
       type: string
       default: "false"
   workspaces:
     - name: source
     - name: cred
+    - name: token
   tasks:
     - displayName: Build go application
       name: build-task
       workspaces:
         - name: source
-          workspace: source
+        - name: cred
+        - name: token
       taskSpec:
-        results:
-          - name: test-fetched
-        workspaces:
-          - name: source
-          - name: cred
         params:
           - name: buildCommand
             default: $(params.buildCommand)
@@ -53,7 +50,10 @@ spec:
               chmod 777 $(workspaces.source.path)/repo
           - name: fetch-repo
             ref:
-              name: git-clone
+              resolver: http
+              params:
+                - name: url
+                  value: https://raw.githubusercontent.com/tektoncd/catalog/main/stepaction/git-clone/0.1/git-clone.yaml
             params:
               - name: output-path
                 value: $(workspaces.source.path)/repo
@@ -63,7 +63,14 @@ spec:
                 value: $(params.revision)
           - name: cache-fetch
             ref:
-              name: cache-fetch
+              resolver: cluster
+              params:
+                - name: name
+                  value: cache-fetch
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
             params:
               - name: PATTERNS
                 value: $(params.cachePatterns)
@@ -73,12 +80,8 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: AWS_SHARED_CREDENTIALS_FILE
-                value: $(workspaces.cred.path)/credentials
-              - name: AWS_CONFIG_FILE
-                value: $(workspaces.cred.path)/config
               - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: $(workspaces.cred.path)/creds.json
+                value: $(workspaces.cred.path)/credential-configuration.json
 
           - name: run-go-build
             workingDir: $(workspaces.source.path)/repo
@@ -95,7 +98,14 @@ spec:
               echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"
           - name: cache-upload
             ref:
-              name: cache-upload
+              resolver: cluster
+              params:
+                - name: name
+                  value: cache-upload
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
             params:
               - name: PATTERNS
                 value: $(params.cachePatterns)
@@ -105,42 +115,7 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: AWS_SHARED_CREDENTIALS_FILE
-                value: $(workspaces.cred.path)/credentials
-              - name: AWS_CONFIG_FILE
-                value: $(workspaces.cred.path)/config
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: $(workspaces.cred.path)/credential-configuration.json
               - name: FORCE_CACHE_UPLOAD
-                value: $(params.FORCE_CACHE_UPLOAD)
-              - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: $(workspaces.cred.path)/creds.json
-
-          - name: cache-fetch-2
-            ref:
-              name: cache-fetch
-            params:
-              - name: PATTERNS
-                value: $(params.cachePatterns)
-              - name: SOURCE
-                value: $(params.registry)/cache-go:{{hash}}
-              - name: CACHE_PATH
-                value: $(workspaces.source.path)/cache
-              - name: WORKING_DIR
-                value: $(workspaces.source.path)/repo
-              - name: AWS_SHARED_CREDENTIALS_FILE
-                value: $(workspaces.cred.path)/credentials
-              - name: AWS_CONFIG_FILE
-                value: $(workspaces.cred.path)/config
-              - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: $(workspaces.cred.path)/creds.json
-
-          - name: verify
-            image: bash:latest
-            env:
-              - name: test
-                value: $(steps.cache-fetch-2.results.fetched)
-            script: |
-              #!/usr/bin/env bash
-              res=${test}
-              echo ${res}
-              echo -n ${res} > $(results.test-fetched.path)
-
+                value: $(params.force-cache-upload)
