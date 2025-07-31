@@ -1,0 +1,28 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-dockerconfig-
+spec:
+  pipelineRef:
+    name: pipeline-dockerconfig
+  params:
+    - name: repo_url
+      value: https://github.com/chmouel/go-helloworld
+    - name: revision
+      value: main
+      # This uses OpenShift internal registry, point it to your own or the public
+      # one like docker.io or quay.io, but make sure to have a token to push
+      # attached to the serviceaccount running the pipelineRun
+    - name: registry
+      value: quay.io/rh-ee-prbindal/$(context.pipelineRun.namespace)
+    - name: buildCommand
+      value: go build -v ./
+    - name: image
+      value: golang:1.21
+  workspaces:
+    - name: source
+      emptyDir: {}
+    - name: cred
+      secret:
+        secretName: regcred

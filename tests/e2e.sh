@@ -4,7 +4,16 @@ set -x
 
 ROOT="$(git rev-parse --show-toplevel)"
 
-ko apply -R -f ${ROOT}/dev/step-action/
+#Create Docker Secret for cache-upload to OCI
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+sed "s%config.json:.*%config.json: ${OCI_CONFIG_JSON}%g" $SCRIPT_DIR/my-docker-secret.yml | tee | kubectl apply -f -
+
+kubectl get secret my-docker-secret -o yaml
+
+# Apply git-clone task to avoid run time resolution
+kubectl apply -f  https://raw.githubusercontent.com/tektoncd/catalog/main/stepaction/git-clone/0.2/git-clone.yaml
+
+kustomize build dev | ko apply -Bf -
 
 # Apply the GCS emulator configuration
 kubectl apply -f "${ROOT}/tests/emulators/gcs-emulator.yaml"

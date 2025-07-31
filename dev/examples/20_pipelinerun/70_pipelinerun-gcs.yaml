@@ -2,25 +2,24 @@
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: pipelinerun-oci-
+  generateName: pipelinerun-gcs-
 spec:
   pipelineRef:
-    name: pipeline
+    name: pipeline-gcs
   params:
     - name: repo_url
       value: https://github.com/chmouel/go-helloworld
     - name: revision
       value: main
-      # This uses S3 bucket  to upload Caches
     - name: registry
-      value: oci://image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)
+      value: gs://tekton-cache
     - name: buildCommand
       value: go build -v ./
     - name: image
-      value: golang:1.21
+      value: golang:1.24
   workspaces:
     - name: cred
       secret:
-        secretName: regcred
+        secretName: gcs-cred
     - name: source
       emptyDir: {}

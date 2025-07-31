@@ -21,7 +21,7 @@ name: build-test-publish
 jobs:
   go:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
+#    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Set up Go
@@ -41,14 +41,13 @@ jobs:
       - name: Run Unit tests
         run: |
           make unit-tests
-
   e2e:
     name: e2e tests
     runs-on: ubuntu-latest
     env:
-        KUBECONFIG: /home/runner/.kube/config.kind
+      KUBECONFIG: /home/runner/.kube/config.kind
     if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
-    needs: [go]
+    needs: [ go ]
     steps:
       - uses: ko-build/setup-ko@v0.9
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -77,34 +76,16 @@ jobs:
       - name: tests
         run: |
           set -euxfo pipefail
-
+          
           REGISTRY=registry.registry.svc.cluster.local:32222
           KO_DOCKER_REPO=localhost:5000/tekton-caches
           IMAGE_REF="${KO_DOCKER_REPO}/cache:$(git rev-parse HEAD | tr -d '\n')"
-
+          
           make e2e
-
-          ko publish --sbom=none --base-import-paths --tags=$(git rev-parse HEAD) ./cmd/cache
-          sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-fetch.yaml | tee | kubectl apply -f -
-          sed "s%image:.*%image: ${IMAGE_REF}%g" tekton/cache-upload.yaml | tee | kubectl apply -f -
-          kubectl apply -f tests/ -f examples/
-          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app \
-            -p gitRevision=main \
-            -p cachePatterns="**.go,**go.sum" \
-            -p cacheURIBase=oci://${REGISTRY}/cache/go \
-            -w name=source,emptyDir= -w name=gocache,emptyDir= \
-            -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="**.go,**go.sum" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-upload-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn task start cache-fetch-go -p gitURL=https://github.com/vdemeester/go-helloworld-app -p gitRevision=main -p cachePatterns="" -p cacheURIBase=oci://${REGISTRY}/cache/go -w name=source,emptyDir= -w name=gocache,emptyDir= -w name=gomodcache,emptyDir= --showlog
-          tkn taskrun list
-          kubectl get taskrun -o yaml
-
+          
   publish:
     name: publish latest
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'openshift-pipelines' # do not run this elsewhere
     needs: [go]
 
     # https://docs.github.com/en/actions/reference/authentication-in-a-workflow

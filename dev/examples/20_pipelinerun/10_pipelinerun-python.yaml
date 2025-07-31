@@ -1,0 +1,21 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-python-
+spec:
+  pipelineRef:
+    name: pipeline-python
+  params:
+    - name: repo_url
+      value: https://github.com/pramodbindal/python-demo.git
+    - name: registry
+      value: kind-registry:5000/$(context.pipelineRun.namespace)/python-cache
+    - name: cachePatterns
+      value: [ "**requirements.txt" ]
+    - name: image
+      value: quay.io/openshift-pipeline/ci:latest
+
+  workspaces:
+    - name: source
+      emptyDir: {}
