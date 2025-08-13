@@ -1,5 +1,5 @@
 ARG GO_BUILDER=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23
-ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal@sha256:e1c4703364c5cb58f5462575dc90345bcd934ddc45e6c32f9c162f2b5617681c
+ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal@sha256:6d5a6576c83816edcc0da7ed62ba69df8f6ad3cbe659adde2891bfbec4dbf187
 
 FROM $GO_BUILDER AS builder
 
@@ -10,14 +10,14 @@ ENV GOEXPERIMENT=strictfipsruntime
 RUN go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
-ARG VERSION=tekton-caches-main
+ARG VERSION=tekton-caches-0.2
 
 COPY --from=builder /tmp/cache /ko-app/cache
 
 
 LABEL \
       com.redhat.component="openshift-pipelines-tekton-caches" \
-      name="openshift-pipelines/pipelines-tekton-caches-rhel8" \
+      name="openshift-pipelines/pipelines-tekton-caches-rhel9" \
       version=$VERSION \
       summary="Red Hat OpenShift Pipelines Tekton Caches" \
       maintainer="pipelines-extcomm@redhat.com" \
