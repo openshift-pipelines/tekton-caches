@@ -1,0 +1,119 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-nodejs
+spec:
+  params:
+    - name: repo_url
+      type: string
+    - name: revision
+      type: string
+    - name: registry
+      type: string
+    - name: buildCommand
+      type: string
+      default: npm install
+    - name: cachePatterns
+      type: array
+      default: [ "**/workspace/source/package.json" ]
+    - name: image
+      type: string
+      default: registry.access.redhat.com/ubi9/nodejs-18:latest
+    - name: force-cache-upload
+      type: string
+      default: "false"
+  workspaces:
+    - name: source
+  tasks:
+    - displayName: Build NodeJs application
+      name: build-task
+      workspaces:
+        - name: source
+          workspace: source
+      taskSpec:
+        workspaces:
+          - name: source
+        params:
+          - name: buildCommand
+            default: $(params.buildCommand)
+          - name: cachePatterns
+            default: $(params.cachePatterns)
+          - name: image
+            default: $(params.image)
+        stepTemplate:
+          securityContext:
+            privileged: false
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - SETFCAP
+              drop:
+                - MKNOD
+                - KILL
+        steps:
+          - name: fetch-repo
+            ref:
+              resolver: cluster
+              params:
+                - name: name
+                  value: git-clone               # Task name inside cluster
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
+            params:
+              - name: OUTPUT_PATH
+                value: $(workspaces.source.path)
+              - name: URL
+                value: $(params.repo_url)
+              - name: REVISION
+                value: $(params.revision)
+          - name: cache-fetch
+            ref:
+              resolver: cluster
+              params:
+                - name: name
+                  value: cache-fetch               # Task name inside cluster
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
+            params:
+              - name: PATTERNS
+                value: $(params.cachePatterns)
+              - name: SOURCE
+                value: "oci://$(params.registry)/cache-nodejs:{{hash}}"
+              - name: CACHE_PATH
+                value: $(workspaces.source.path)/node_modules
+              - name: WORKING_DIR
+                value: $(workspaces.source.path)/
+          - name: run-build
+            image: $(params.image)
+            workingDir: $(workspaces.source.path)
+            env:
+            script: |
+              $(params.buildCommand)
+              echo "Cache size is $(du -sh $(workspaces.source.path)/node_modules)"
+          - name: cache-upload
+            ref:
+              resolver: cluster
+              params:
+                - name: kind
+                  value: stepaction
+                - name: name
+                  value: cache-upload
+                - name: namespace
+                  value: openshift-pipelines
+            params:
+              - name: PATTERNS
+                value: $(params.cachePatterns)
+              - name: TARGET
+                value: "oci://$(params.registry)/cache-nodejs:{{hash}}"
+              - name: CACHE_PATH
+                value: $(workspaces.source.path)/node_modules
+              - name: WORKING_DIR
+                value: $(workspaces.source.path)/
+              - name: FORCE_CACHE_UPLOAD
+                value: $(params.force-cache-upload)

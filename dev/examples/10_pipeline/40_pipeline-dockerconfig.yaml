@@ -1,8 +1,10 @@
+#Example Pipeline to build a golang application using Tekton Pipelines with caching support.
+#This Pipeline uses custom DOCKER_CONFIG parameter to pass the cache-upload  stepAction config for pulling/pushing images.
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: pipeline-wif
+  name: pipeline-dockerconfig
 spec:
   params:
     - name: repo_url
@@ -26,15 +28,16 @@ spec:
   workspaces:
     - name: source
     - name: cred
-    - name: token
   tasks:
     - displayName: Build go application
       name: build-task
       workspaces:
         - name: source
-        - name: cred
-        - name: token
+          workspace: source
       taskSpec:
+        workspaces:
+          - name: source
+          - name: cred
         params:
           - name: buildCommand
             default: $(params.buildCommand)
@@ -48,6 +51,7 @@ spec:
             script: |
               mkdir -p $(workspaces.source.path)/repo
               chmod 777 $(workspaces.source.path)/repo
+              ls -lart /workspace/source/repo
           - name: fetch-repo
             ref:
               resolver: http
@@ -63,22 +67,29 @@ spec:
                 value: $(params.revision)
           - name: cache-fetch
             ref:
-              name: cache-fetch
+              resolver: cluster
+              params:
+                - name: name
+                  value: cache-fetch
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
             params:
               - name: PATTERNS
                 value: $(params.cachePatterns)
-              - name: source
-                value: $(params.registry)/cache-go:{{hash}}
+              - name: SOURCE
+                value: oci://$(params.registry)/cache-go:{{hash}}
               - name: CACHE_PATH
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: $(workspaces.cred.path)/credential-configuration.json
+              - name: DOCKER_CONFIG
+                value: $(workspaces.cred.path)/
 
-          - name: run-go-build
+          - image: $(params.image)
             workingDir: $(workspaces.source.path)/repo
-            image: $(params.image)
+            name: run-go-build
             env:
               - name: GOCACHE
                 value: $(workspaces.source.path)/cache/gocache
@@ -91,17 +102,23 @@ spec:
               echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"
           - name: cache-upload
             ref:
-              name: cache-upload
+              resolver: cluster
+              params:
+                - name: name
+                  value: cache-upload
+                - name: namespace
+                  value: openshift-pipelines
+                - name: kind
+                  value: stepaction
             params:
               - name: PATTERNS
                 value: $(params.cachePatterns)
               - name: TARGET
-                value: $(params.registry)/cache-go:{{hash}}
+                value: oci://$(params.registry)/cache-go:{{hash}}
               - name: CACHE_PATH
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
-              - name: GOOGLE_APPLICATION_CREDENTIALS
-                value: $(workspaces.cred.path)/credential-configuration.json
-              - name: FORCE_CACHE_UPLOAD
-                value: $(params.force-cache-upload)
+              - name: DOCKER_CONFIG
+                value: $(workspaces.cred.path)/
+

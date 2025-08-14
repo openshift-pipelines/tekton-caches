@@ -59,10 +59,7 @@ spec:
                 chmod 777 $(workspaces.source.path)/repo
             - name: fetch-repo
               ref:
-                resolver: http
-                params:
-                  - name: url
-                    value: https://raw.githubusercontent.com/tektoncd/catalog/main/stepaction/git-clone/0.1/git-clone.yaml
+                name: git-clone
               params:
                 - name: output-path
                   value: $(workspaces.source.path)/repo
@@ -166,7 +163,7 @@ spec:
     - name: buildCommand
       value: go build -v ./
     - name: image
-      value: golang:1.21
+      value: golang:1.24
   workspaces:
     - name: cred
       secret:

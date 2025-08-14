@@ -91,8 +91,27 @@ spec:
     for p in $*; do
       PATTERN_FLAGS="${PATTERN_FLAGS} --pattern ${p}"
     done
-    
-    set -x
+
+    if [[ -n $DOCKER_CONFIG ]]; then
+      echo "Setting DOCKER_CONFIG $DOCKER_CONFIG"
+      # if config.json exists at workspace root, we use that
+        if test -f "${DOCKER_CONFIG}/config.json"; then
+          export DOCKER_CONFIG="${DOCKER_CONFIG}"    
+        # else we look for .dockerconfigjson at the root
+        elif test -f "${DOCKER_CONFIG}/.dockerconfigjson"; then
+          # ensure .docker exist before the copying the content
+          if [ ! -d "$HOME/.docker" ]; then
+            mkdir -p "$HOME/.docker"
+          fi
+          cp "${DOCKER_CONFIG}/.dockerconfigjson" "$HOME/.docker/config.json"
+          export DOCKER_CONFIG="$HOME/.docker"    
+        else
+          # need to error out if neither files are present
+          echo "neither 'config.json' nor '.dockerconfigjson' found at $DOCKER_CONFIG"
+          exit 1
+        fi
+     fi    
+
     /ko-app/cache fetch ${PATTERN_FLAGS} \
                         --source ${PARAM_SOURCE} \
                         --folder ${PARAM_CACHE_PATH} \
