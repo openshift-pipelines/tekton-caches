@@ -1,0 +1,149 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: caches-python-pipeline
+spec:
+  params:
+    - name: repo_url
+      default: https://github.com/openshift-pipelines/release-tests.git
+    - name: revision
+      type: string
+      default: master
+    - name: registry
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/python-cache
+    - name: cachePatterns
+      type: array
+      default: ["**requirment.txt"]
+    - name: image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/openshift/python
+    - name: force-cache-upload
+      type: string
+      default: "false"
+    - name: version
+      description: The tag of 'python' imagestream for Python version
+      default: 3.12-ubi9
+  workspaces:
+    - name: source
+  tasks:
+  - name: clone-git-repo
+    taskRef:
+      resolver: cluster
+      params:
+      - name: kind
+        value: task
+      - name: name
+        value: git-clone
+      - name: namespace
+        value: openshift-pipelines
+    workspaces:
+    - name: output
+      workspace: source
+    params:
+    - name: URL
+      value: $(params.repo_url)
+    - name: REVISION
+      value: $(params.revision)
+    - name: SUBDIRECTORY
+      value: repo
+    - name: DELETE_EXISTING
+      value: "true"
+  - name: set-python-venv
+    taskSpec:
+      steps:
+      - name: set-python-venv
+        image: $(params.image):$(params.version)
+        script: |
+          echo "Setting python venv to $(workspaces.source.path)/cache"
+          python -m venv $(workspaces.source.path)/cache
+          chmod -R 777 $(workspaces.source.path)/cache
+    runAfter:
+    - clone-git-repo
+  - name: cache-fetch
+    taskSpec:
+      results:
+        - name: fetched
+      steps:
+      - name: cache-fetch
+        ref:
+          resolver: cluster
+          params:
+          - name: name
+            value: cache-fetch
+          - name: namespace
+            value: openshift-pipelines
+          - name: kind
+            value: stepaction
+        params:
+          - name: PATTERNS
+            value: $(params.cachePatterns)
+          - name: SOURCE
+            value: oci://$(params.registry):{{hash}}
+          - name: CACHE_PATH
+            value: $(workspaces.source.path)/cache/lib
+          - name: WORKING_DIR
+            value: $(workspaces.source.path)/repo
+      - name: check-fetch-result
+        image: $(params.image):$(params.version)
+        results:
+          - name: fetched
+            description: "Whether the cache fetch was successful"
+        env:
+          - name: FETCHED_RESULT
+            value: $(steps.cache-fetch.results.fetched)
+        script: |
+          if [ "$FETCHED_RESULT" == "true" ]; then
+            echo "Cache fetch successful"
+            echo -n "true" > $(results.fetched.path)
+          else
+            echo "Cache fetch failed"
+            echo -n "false" > $(results.fetched.path)
+          fi
+    runAfter:
+    - set-python-venv
+  - name: run-build
+    taskSpec:
+      steps:
+      - name: run-build
+        image: $(params.image):$(params.version)
+        workingDir: $(workspaces.source.path)/repo
+        env:
+          - name: LOCAL_CACHE_REPO
+            value: $(workspaces.source.path)/cache/lib
+        script: |
+          set -x
+          source $(workspaces.source.path)/cache/bin/activate
+          pip install -r testdata/s2i_python/requirment.txt
+          echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"
+    runAfter:
+    - cache-fetch
+  - name: cache-upload
+    taskSpec:
+      steps:
+      - name: cache-upload
+        ref:
+          resolver: cluster
+          params:
+          - name: name
+            value: cache-upload
+          - name: namespace
+            value: openshift-pipelines
+          - name: kind
+            value: stepaction
+        params:
+          - name: PATTERNS
+            value: $(params.cachePatterns)
+          - name: TARGET
+            value: oci://$(params.registry):{{hash}}
+          - name: CACHE_PATH
+            value: $(workspaces.source.path)/cache/lib
+          - name: WORKING_DIR
+            value: $(workspaces.source.path)/repo
+          - name: FORCE_CACHE_UPLOAD
+            value: $(params.force-cache-upload)
+          - name: FETCHED
+            value: $(tasks.cache-fetch.results.fetched)
+    runAfter:
+    - run-build
