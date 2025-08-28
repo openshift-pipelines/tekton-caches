@@ -1,0 +1,15 @@
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: caches-python-pipeline-
+spec:
+  pipelineRef:
+    name: caches-python-pipeline
+  params:
+    - name: revision
+      value: release-v1.17
+  workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: shared-pvc
