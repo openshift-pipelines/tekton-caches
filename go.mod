@@ -2,7 +2,7 @@ module github.com/openshift-pipelines/tekton-caches
 
 go 1.23.0
 
-toolchain go1.24.0
+toolchain go1.25.1
 
 require (
 	github.com/google/go-containerregistry v0.20.3
