@@ -16,8 +16,9 @@ COPY --from=builder /tmp/cache /ko-app/cache
 
 LABEL \
       com.redhat.component="openshift-pipelines-tekton-caches" \
-      name="openshift-pipelines/pipelines-tekton-caches-rhel9" \
+      name="openshift-pipelines/pipelines-cache-rhel9" \
       version=$VERSION \
+      cpe="cpe:/a:redhat:openshift_pipelines:1.18::el9" \
       summary="Red Hat OpenShift Pipelines Tekton Caches" \
       maintainer="pipelines-extcomm@redhat.com" \
       description="Red Hat OpenShift Pipelines Tekton Caches" \
