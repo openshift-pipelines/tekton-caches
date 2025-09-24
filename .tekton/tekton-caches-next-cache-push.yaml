@@ -31,15 +31,13 @@ spec:
     value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/next/cache-rhel9:{{revision}}
   - name: dockerfile
     value: .konflux/dockerfiles/cache.Dockerfile
-  - name: build-platforms
-    value:
-      - linux/x86_64
-      - linux-m2xlarge/arm64
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-tekton-caches-next-cache
   workspaces:
   - name: git-auth
     secret:
