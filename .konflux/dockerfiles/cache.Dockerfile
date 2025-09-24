@@ -1,5 +1,5 @@
-ARG GO_BUILDER=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23
-ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal@sha256:6d5a6576c83816edcc0da7ed62ba69df8f6ad3cbe659adde2891bfbec4dbf187
+ARG GO_BUILDER=registry.redhat.io/ubi9/go-toolset:1.24
+ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal@sha256:7c5495d5fad59aaee12abc3cbbd2b283818ee1e814b00dbc7f25bf2d14fa4f0c
 
 FROM $GO_BUILDER AS builder
 
@@ -7,7 +7,8 @@ WORKDIR /go/src/github.com/openshift-pipelines/tekton-caches
 COPY . .
 
 ENV GOEXPERIMENT=strictfipsruntime
-RUN go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
+RUN git config --global --add safe.directory . && \
+    go build -tags $GOEXPERIMENT  -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
 ARG VERSION=tekton-caches-main
