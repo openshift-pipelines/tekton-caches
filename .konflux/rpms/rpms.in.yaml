@@ -1,4 +1,4 @@
-contentOrigin:
+contentOrigin: 
   repofiles:
     - ./ubi.repo
 packages: [openssh-clients]
