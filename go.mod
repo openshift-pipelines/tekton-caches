@@ -6,7 +6,7 @@ toolchain go1.23.2
 
 require (
 	github.com/codeclysm/extract/v4 v4.0.0
-	github.com/google/go-containerregistry v0.20.3
+	github.com/google/go-containerregistry v0.20.6
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
