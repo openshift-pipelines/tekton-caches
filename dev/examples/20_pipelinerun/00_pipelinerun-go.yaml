@@ -8,18 +8,16 @@ spec:
     name: pipeline-go
   params:
     - name: repo_url
-      value: https://github.com/chmouel/go-helloworld
+      value: https://github.com/tektoncd/pipeline.git
     - name: revision
       value: main
       # This uses OpenShift internal registry, point it to your own or the public
       # one like docker.io or quay.io, but make sure to have a token to push
       # attached to the serviceaccount running the pipelineRun
     - name: registry
-      value: kind-registry:5000/$(context.pipelineRun.namespace)
-    - name: buildCommand
-      value: go build -v ./
+      value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)
     - name: image
-      value: golang:1.24
+      value: golang
   workspaces:
     - name: source
       emptyDir: {}
