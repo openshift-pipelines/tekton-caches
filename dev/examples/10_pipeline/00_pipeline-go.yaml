@@ -90,7 +90,7 @@ spec:
             script: |
               set -x
               git config --global --add safe.directory $(workspaces.source.path)/repo
-              $(params.buildCommand)
+              go test -v ./... --cover
               echo "Cache size is $(du -sh $(workspaces.source.path)/cache)"
           - name: cache-upload
             ref:

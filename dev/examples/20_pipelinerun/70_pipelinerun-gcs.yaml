@@ -5,7 +5,7 @@ metadata:
   generateName: pipelinerun-gcs-
 spec:
   pipelineRef:
-    name: pipeline-gcs
+    name: pipeline-wif
   params:
     - name: repo_url
       value: https://github.com/chmouel/go-helloworld
