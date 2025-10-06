@@ -11,7 +11,7 @@ RUN git config --global --add safe.directory . && \
     go build -tags $GOEXPERIMENT  -v -o /tmp/cache  ./cmd/cache
 
 FROM $RUNTIME
-ARG VERSION=tekton-caches-main
+ARG VERSION=tekton-caches-0.3
 
 COPY --from=builder /tmp/cache /ko-app/cache
 

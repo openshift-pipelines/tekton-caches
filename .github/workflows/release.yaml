@@ -7,7 +7,7 @@ on:
       version:
         description: 'Define the version you want to release'
         required: true
-        default: '0.0.1'
+        default: '0.3.0'
 
 jobs:
   release:
