@@ -1,8 +1,6 @@
 name: Test Tekton-Cache on CRC
 on:
   push:
-    branches:
-      - main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
