@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "description": "Automerge non-major updates on depA and depB",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchPackageNames": ["depA", "depB"],
+      "automerge": true
+    }
+  ]
+}
