@@ -1,0 +1,28 @@
+# Generated for Konflux Application openshift-pipelines-core by openshift-pipelines/hack. DO NOT EDIT
+name: auto-merge-upstream-tekton-caches
+
+on:
+  workflow_dispatch: {}
+  schedule:
+  - cron: "*/30 * * * *" # At every 30 minutes
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+    - name: Checkout the current repo
+      uses: actions/checkout@v4
+    - name: auto-merge-upstream-tekton-caches
+      run: |
+        gh auth status
+        git config user.name openshift-pipelines-bot
+        git config user.email pipelines-extcomm@redhat.com
+        # Approve and merge pull-request with no reviews
+        for p in $(gh pr list --search "head:actions/update/sources-tekton-caches" --json "number" | jq ".[].number"); do
+          gh pr merge --rebase --delete-branch --auto $p
+        done
+      env:
+        GH_TOKEN: ${{ secrets.OPENSHIFT_PIPELINES_ROBOT }}
+

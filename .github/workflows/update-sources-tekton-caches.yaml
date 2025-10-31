@@ -1,0 +1,75 @@
+# Generated for Konflux Application openshift-pipelines-core by openshift-pipelines/hack. DO NOT EDIT
+name: update-sources-tekton-caches
+
+on:
+  workflow_dispatch: {}
+  schedule:
+  - cron: "0 1 * * *" # At 1AM everyday
+
+jobs:
+
+  update-sources:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+    - name: Checkout the current repo
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Clone openshift-pipeline/tekton-caches
+      run: |
+        rm -fR upstream
+        git clone https://github.com/openshift-pipeline/tekton-caches upstream
+        pushd upstream
+        git checkout -B main origin/main
+        popd
+    - name: Commit new changes
+      run: |
+        
+        set -x
+        
+        git config user.name openshift-pipelines-bot
+        git config user.email pipelines-extcomm@redhat.com
+        git checkout -b actions/update/sources-main
+        touch head
+        pushd upstream
+        OLD_COMMIT=$(cat ../head)
+        NEW_COMMIT=$(git rev-parse HEAD)
+        echo Previous commit: ${OLD_COMMIT}
+        git show --stat ${OLD_COMMIT}
+        echo New commit: ${NEW_COMMIT}
+        git show --stat ${NEW_COMMIT}
+        git diff --stat ${NEW_COMMIT}..${OLD_COMMIT} > /tmp/diff.txt
+        git rev-parse HEAD > ../head
+        popd
+        rm -rf upstream/.git
+        git add -f upstream head .konflux
+
+        if [[ -z $(git status --porcelain --untracked-files=no) ]]; then
+          echo "No change, exiting"
+          exit 0
+        fi
+
+        git commit -F- <<EOF
+        [bot] Update main from openshift-pipeline/tekton-caches to ${NEW_COMMIT}
+
+            $ git diff --stat ${NEW_COMMIT}..${OLD_COMMIT}
+        $(cat /tmp/diff.txt | sed 's/^/    /' | head -c 55555)
+        
+        https://github.com/openshift-pipeline/tekton-caches/compare/${NEW_COMMIT}..${OLD_COMMIT}
+        EOF
+        
+        git push -f origin actions/update/sources-main
+
+        if [ "$(gh pr list --base main --head actions/update/sources-main --json url --jq 'length')" = "0" ]; then
+          echo "creating PR..."
+          gh pr create -B main -H actions/update/sources-main --label=automated --label=upstream --fill
+        else
+          echo "a PR already exists, editing..."
+          gh pr edit --title "[bot] Update main from openshift-pipeline/tekton-caches to ${NEW_COMMIT}" --body "$(cat /tmp/diff.txt | sed 's/^/    /' | head -c 55555)"
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
