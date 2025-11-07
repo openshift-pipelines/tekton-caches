@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     steps:
     - name: Checkout the current repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: auto-merge-upstream-tekton-caches
       run: |
         gh auth status
