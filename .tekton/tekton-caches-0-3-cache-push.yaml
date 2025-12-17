@@ -1,4 +1,4 @@
-# Generated for Konflux Application openshift-pipelines-core by openshift-pipelines/hack. DO NOT EDIT
+# Generated for Konflux Application tekton-caches by openshift-pipelines/hack. DO NOT EDIT
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -13,31 +13,36 @@ metadata:
       == "release-v0.3.x" &&
       ("***".pathChanged() ||
       ".konflux/dockerfiles/cache.Dockerfile".pathChanged() ||
-      ".tekton/tekton-caches-1-19-cache-push.yaml".pathChanged())
+      ".tekton/tekton-caches-0-3-cache-push.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: openshift-pipelines-core-1-19
-    appstudio.openshift.io/component: tekton-caches-1-19-cache
+    appstudio.openshift.io/application: tekton-caches-0-3
+    appstudio.openshift.io/component: tekton-caches-0-3-cache
     pipelines.appstudio.openshift.io/type: build
-  name: tekton-caches-1-19-cache-on-push
+  name: tekton-caches-0-3-cache-on-push
   namespace: tekton-ecosystem-tenant
 spec:
   params:
   - name: git-url
     value: '{{source_url}}'
+  - name: upstream-git-url
+    value: 'https://github.com/'
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/1-19/cache-rhel9:{{revision}}
+    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/tekton-caches/cache-rhel9:{{revision}}
   - name: dockerfile
     value: .konflux/dockerfiles/cache.Dockerfile
+  - name: additional-tags
+    value:
+      - "v0.3.1"
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
   pipelineRef:
     name: docker-build-ta
   taskRunTemplate:
-    serviceAccountName: build-pipeline-tekton-caches-1-19-cache
+    serviceAccountName: build-pipeline-tekton-caches-0-3-cache
   workspaces:
   - name: git-auth
     secret:
