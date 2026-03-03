@@ -14,7 +14,7 @@
     "konflux",
     "mintmaker"
   ],
-  "ignorePaths": ["upstream/**"],
+  "ignorePaths": ["vendor/**"],
 
   "autoApprove": true,
   "packageRules": [
