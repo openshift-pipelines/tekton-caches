@@ -27,7 +27,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
-          go-version: "1.23"
+          go-version: "1.25"
       - run: go env
       - name: go build
         run: go build -v ./...
@@ -37,6 +37,7 @@ jobs:
           golangci-lint: latest
       - name: Lint Go Code
         run: |
+          golangci-lint --version
           make lint-go
       - name: Run Unit tests
         run: |

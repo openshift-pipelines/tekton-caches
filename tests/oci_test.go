@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/openshift-pipelines/tekton-caches/internal/cacheutils"
 	"github.com/openshift-pipelines/tekton-caches/internal/fetch"
-	"github.com/openshift-pipelines/tekton-caches/internal/hash"
 	"github.com/openshift-pipelines/tekton-caches/internal/upload"
 	"github.com/openshift-pipelines/tekton-caches/tests/client"
 	"github.com/openshift-pipelines/tekton-caches/tests/resources"
@@ -38,7 +38,7 @@ func TestOCIUpload(t *testing.T) {
 	defer tmpdir.Remove()
 	defer env.ChangeWorkingDir(t, tmpdir.Path())()
 	assert.NilError(t, os.WriteFile(filepath.Join(tmpdir.Path(), "go.mod"), []byte(goModContent), 0o644))
-	hash, err := hash.Compute([]string{filepath.Join(tmpdir.Path(), "go.mod")})
+	hash, err := cacheutils.Compute([]string{filepath.Join(tmpdir.Path(), "go.mod")})
 	assert.Equal(t, hash, hashOfGoModContent)
 	assert.NilError(t, err)
 	assert.NilError(t, upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true))

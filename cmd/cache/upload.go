@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/moby/patternmatcher"
+	"github.com/openshift-pipelines/tekton-caches/internal/cacheutils"
 	"github.com/openshift-pipelines/tekton-caches/internal/flags"
-	"github.com/openshift-pipelines/tekton-caches/internal/hash"
 	"github.com/openshift-pipelines/tekton-caches/internal/upload"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +55,7 @@ func uploadCmd() *cobra.Command {
 			fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
 
 			// TODO: Hash files based of matches
-			hashStr, err := hash.Compute(matches)
+			hashStr, err := cacheutils.Compute(matches)
 			if err != nil {
 				return err
 			}
