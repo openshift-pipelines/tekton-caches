@@ -67,6 +67,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -128,7 +129,7 @@ func readDefaultCredentials(credFileAsJSON []byte) (AccessID string, PrivateKey 
 	}
 	if err := json.Unmarshal(credFileAsJSON, &contentVariantB); err == nil {
 		nextFieldIsAccessID := false
-		for _, s := range strings.Split(contentVariantB.Name, "/") {
+		for s := range strings.SplitSeq(contentVariantB.Name, "/") {
 			if nextFieldIsAccessID {
 				AccessID = s
 				break
@@ -157,7 +158,15 @@ func (o *lazyCredsOpener) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.
 			creds, _ = google.CredentialsFromJSON(ctx, []byte(`{"type": "service_account", "project_id": "my-project-id"}`))
 		} else {
 			var err error
-			creds, err = gcp.DefaultCredentials(ctx)
+			// Check if universe_domain is specified in the URL query parameters
+			universeDomain := u.Query().Get("universe_domain")
+			if universeDomain != "" {
+				creds, err = gcp.DefaultCredentialsWithParams(ctx, google.CredentialsParams{
+					UniverseDomain: universeDomain,
+				})
+			} else {
+				creds, err = gcp.DefaultCredentials(ctx)
+			}
 			if err != nil {
 				fmt.Printf("Warning: unable to load GCP Default Credentials: %v", err)
 				// Use empty credentials, in case the user isn't going to actually use
@@ -167,6 +176,13 @@ func (o *lazyCredsOpener) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.
 
 			// Populate default values from credentials files, where available.
 			opts.GoogleAccessID, opts.PrivateKey = readDefaultCredentials(creds.JSON)
+
+			ud, err := creds.GetUniverseDomain()
+			if err != nil {
+				fmt.Printf("Warning: unable to load GCP Universe Domain: %v", err)
+			} else if ud != "" {
+				opts.ClientOptions = append(opts.ClientOptions, option.WithUniverseDomain(ud))
+			}
 
 			// ... else, on GCE, at least get the instance's main service account.
 			if opts.GoogleAccessID == "" && metadata.OnGCE() {
@@ -206,14 +222,14 @@ const Scheme = "gs"
 //
 // The following query parameters are supported:
 //
-//   - access_id: sets Options.GoogleAccessID
-//   - private_key_path: path to read for Options.PrivateKey
-//
-// Currently their use is limited to SignedURL, except that setting access_id
-// to "-" forces the use of an unauthenticated client.
+//   - anonymous: A value of "true" forces the use of an unauthenticated client.
+//   - access_id: Sets Options.GoogleAccessID; only used in SignedURL, except that
+//     a value of "-" forces the use of an unauthenticated client.
+//   - private_key_path: Path to read for Options.PrivateKey; only used in SignedURL.
+//   - universe_domain: Sets the universe domain for the client.
 type URLOpener struct {
 	// Client must be set to a non-nil HTTP client authenticated with
-	// Cloud Storage scope or equivalent.
+	// Cloud Storage scope or equivalent (unless anonymous=true).
 	Client *gcp.HTTPClient
 
 	// Options specifies the default options to pass to OpenBucket.
@@ -231,13 +247,23 @@ func (o *URLOpener) OpenBucketURL(ctx context.Context, u *url.URL) (*blob.Bucket
 
 func (o *URLOpener) forParams(ctx context.Context, q url.Values) (*Options, *gcp.HTTPClient, error) {
 	for k := range q {
-		if k != "access_id" && k != "private_key_path" {
+		if k != "access_id" && k != "private_key_path" && k != "anonymous" && k != "universe_domain" {
 			return nil, nil, fmt.Errorf("invalid query parameter %q", k)
 		}
 	}
 	opts := new(Options)
 	*opts = o.Options
 	client := o.Client
+	if anon := q.Get("anonymous"); anon != "" {
+		isAnon, err := strconv.ParseBool(anon)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid value %q for query parameter \"anonymous\": %w", anon, err)
+		}
+		if isAnon {
+			opts.clear()
+			client = gcp.NewAnonymousHTTPClient(gcp.DefaultTransport())
+		}
+	}
 	if accessID := q.Get("access_id"); accessID != "" && accessID != opts.GoogleAccessID {
 		opts.clear()
 		if accessID == "-" {
@@ -285,7 +311,14 @@ type Options struct {
 	// If your implementation of 'SignBytes' needs a request context, set this instead.
 	MakeSignBytes func(requestCtx context.Context) SignBytesFunc
 
+	// Client provides a *storage.Client to use, instead of constructing one based on
+	// the HTTPClient. When set, you must pass nil as the gcp.HTTPClient to OpenBucket.
+	//
+	// For example, this can be used to create a Bucket backed by a gRPC client.
+	Client *storage.Client
+
 	// ClientOptions are passed when constructing the storage.Client.
+	// Ignored if Client is set.
 	ClientOptions []option.ClientOption
 }
 
@@ -302,11 +335,20 @@ type SignBytesFunc func([]byte) ([]byte, error)
 
 // openBucket returns a GCS Bucket that communicates using the given HTTP client.
 func openBucket(ctx context.Context, client *gcp.HTTPClient, bucketName string, opts *Options) (*bucket, error) {
-	if client == nil {
-		return nil, errors.New("gcsblob.OpenBucket: client is required")
+	if opts == nil {
+		opts = &Options{}
 	}
 	if bucketName == "" {
 		return nil, errors.New("gcsblob.OpenBucket: bucketName is required")
+	}
+	if opts.Client != nil {
+		if client != nil {
+			return nil, errors.New("gcsblob.OpenBucket: client must be nil when providing Options.Client")
+		}
+		return &bucket{name: bucketName, client: opts.Client, opts: opts}, nil
+	}
+	if client == nil {
+		return nil, errors.New("gcsblob.OpenBucket: client is required")
 	}
 
 	// We wrap the provided http.Client to add a Go CDK User-Agent.
@@ -317,9 +359,6 @@ func openBucket(ctx context.Context, client *gcp.HTTPClient, bucketName string, 
 			option.WithEndpoint("http://" + host + "/storage/v1/"),
 			option.WithHTTPClient(http.DefaultClient),
 		}
-	}
-	if opts == nil {
-		opts = &Options{}
 	}
 	clientOpts = append(clientOpts, opts.ClientOptions...)
 	c, err := storage.NewClient(ctx, clientOpts...)
@@ -369,7 +408,7 @@ func (r *reader) Attributes() *driver.ReaderAttributes {
 	return &r.attrs
 }
 
-func (r *reader) As(i interface{}) bool {
+func (r *reader) As(i any) bool {
 	p, ok := i.(**storage.Reader)
 	if !ok {
 		return false
@@ -379,7 +418,7 @@ func (r *reader) As(i interface{}) bool {
 }
 
 func (b *bucket) ErrorCode(err error) gcerrors.ErrorCode {
-	if err == storage.ErrObjectNotExist || err == storage.ErrBucketNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) || errors.Is(err, storage.ErrBucketNotExist) {
 		return gcerrors.NotFound
 	}
 	if gerr, ok := err.(*googleapi.Error); ok {
@@ -411,7 +450,7 @@ func (b *bucket) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driv
 		Delimiter: escapeKey(opts.Delimiter),
 	}
 	if opts.BeforeList != nil {
-		asFunc := func(i interface{}) bool {
+		asFunc := func(i any) bool {
 			p, ok := i.(**storage.Query)
 			if !ok {
 				return false
@@ -439,7 +478,7 @@ func (b *bucket) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driv
 		page.Objects = make([]*driver.ListObject, len(objects))
 		for i, obj := range objects {
 			toCopy := obj
-			asFunc := func(val interface{}) bool {
+			asFunc := func(val any) bool {
 				p, ok := val.(*storage.ObjectAttrs)
 				if !ok {
 					return false
@@ -474,7 +513,7 @@ func (b *bucket) ListPaged(ctx context.Context, opts *driver.ListOptions) (*driv
 }
 
 // As implements driver.As.
-func (b *bucket) As(i interface{}) bool {
+func (b *bucket) As(i any) bool {
 	p, ok := i.(**storage.Client)
 	if !ok {
 		return false
@@ -484,7 +523,7 @@ func (b *bucket) As(i interface{}) bool {
 }
 
 // As implements driver.ErrorAs.
-func (b *bucket) ErrorAs(err error, i interface{}) bool {
+func (b *bucket) ErrorAs(err error, i any) bool {
 	switch v := err.(type) {
 	case *googleapi.Error:
 		if p, ok := i.(**googleapi.Error); ok {
@@ -522,7 +561,7 @@ func (b *bucket) Attributes(ctx context.Context, key string) (*driver.Attributes
 		Size:               attrs.Size,
 		MD5:                attrs.MD5,
 		ETag:               eTag,
-		AsFunc: func(i interface{}) bool {
+		AsFunc: func(i any) bool {
 			p, ok := i.(*storage.ObjectAttrs)
 			if !ok {
 				return false
@@ -551,7 +590,7 @@ func (b *bucket) NewRangeReader(ctx context.Context, key string, offset, length 
 	var rerr error
 	madeReader := false
 	if opts.BeforeRead != nil {
-		asFunc := func(i interface{}) bool {
+		asFunc := func(i any) bool {
 			if p, ok := i.(***storage.ObjectHandle); ok && !madeReader {
 				*p = objp
 				return true
@@ -616,6 +655,9 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key, contentType string, op
 	bkt := b.client.Bucket(b.name)
 	obj := bkt.Object(key)
 
+	if opts.IfNotExist {
+		obj = obj.If(storage.Conditions{DoesNotExist: true})
+	}
 	// Add an extra level of indirection so that BeforeWrite can replace obj
 	// if needed. For example, ObjectHandle.If returns a new ObjectHandle.
 	// Also, make the Writer lazily in case this replacement happens.
@@ -636,7 +678,7 @@ func (b *bucket) NewTypedWriter(ctx context.Context, key, contentType string, op
 
 	var w *storage.Writer
 	if opts.BeforeWrite != nil {
-		asFunc := func(i interface{}) bool {
+		asFunc := func(i any) bool {
 			if p, ok := i.(***storage.ObjectHandle); ok && w == nil {
 				*p = objp
 				return true
@@ -685,7 +727,7 @@ func (b *bucket) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.C
 
 	var copier *storage.Copier
 	if opts.BeforeCopy != nil {
-		asFunc := func(i interface{}) bool {
+		asFunc := func(i any) bool {
 			if p, ok := i.(**CopyObjectHandles); ok && copier == nil {
 				*p = &handles
 				return true
@@ -746,7 +788,7 @@ func (b *bucket) SignedURL(ctx context.Context, key string, dopts *driver.Signed
 		opts.SignBytes = b.opts.MakeSignBytes(ctx)
 	}
 	if dopts.BeforeSign != nil {
-		asFunc := func(i interface{}) bool {
+		asFunc := func(i any) bool {
 			v, ok := i.(**storage.SignedURLOptions)
 			if ok {
 				*v = opts
