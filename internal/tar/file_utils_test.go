@@ -1,9 +1,11 @@
-package tar
+package tar_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	cachetar "github.com/openshift-pipelines/tekton-caches/internal/tar"
 )
 
 func TestComressAndExtract(t *testing.T) {
@@ -29,7 +31,7 @@ func TestComressAndExtract(t *testing.T) {
 
 	// Test Compress
 	tarFile := filepath.Join(tempDir, "test.tar.gz")
-	err = Compress(testDir, tarFile)
+	err = cachetar.Compress(testDir, tarFile)
 	if err != nil {
 		t.Fatalf("Compress failed: %v", err)
 	}
@@ -52,7 +54,7 @@ func TestComressAndExtract(t *testing.T) {
 	}
 	defer tarFileHandle.Close()
 
-	err = ExtractTarGz(tarFileHandle, extractDir)
+	err = cachetar.ExtractTarGz(tarFileHandle, extractDir)
 	if err != nil {
 		t.Fatalf("ExtractTarGz failed: %v", err)
 	}

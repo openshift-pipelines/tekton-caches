@@ -1,4 +1,4 @@
-package tar
+package tar //nolint:revive
 
 import (
 	"archive/tar"
@@ -88,8 +88,14 @@ func Compress(source, target string) error {
 	return nil
 }
 
+// sanitizeLog strips newline/carriage-return characters from s to prevent log injection.
+func sanitizeLog(s string) string {
+	s = strings.ReplaceAll(s, "\n", "")
+	return strings.ReplaceAll(s, "\r", "")
+}
+
 func ExtractTarGz(file *os.File, targetDir string) error {
-	log.Printf("Extracting tar.gz...%s", file.Name())
+	log.Printf("Extracting tar.gz...%s", sanitizeLog(file.Name())) //nolint:gosec
 	gz, err := gzip.NewReader(file)
 	if err != nil {
 		return fmt.Errorf("error creating gzip reader: %w", err)
@@ -101,7 +107,7 @@ func ExtractTarGz(file *os.File, targetDir string) error {
 }
 
 func ExtractTar(file *os.File, targetDir string) error {
-	log.Printf("Extracting tar...  %s", file.Name())
+	log.Printf("Extracting tar...  %s", sanitizeLog(file.Name())) //nolint:gosec
 	return extract(tar.NewReader(file), targetDir)
 }
 
@@ -129,16 +135,16 @@ func extract(tr *tar.Reader, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			// Ensure directory exists
-			if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			// Ensure directory exists; path is validated by safePath above.
+			if err := os.MkdirAll(path, os.ModePerm); err != nil { //nolint:gosec
 				return err
 			}
 			// Change the directory permission so that all users can create/update files inside.
-			if err := os.Chmod(path, os.ModePerm); path != baseDir && err != nil {
+			if err := os.Chmod(path, os.ModePerm); path != baseDir && err != nil { //nolint:gosec
 				return fmt.Errorf("failed to change permissions of %s: %w", path, err)
 			}
 		case tar.TypeReg:
-			outFile, err := os.Create(path)
+			outFile, err := os.Create(path) //nolint:gosec
 			if err != nil {
 				return fmt.Errorf("error while creating file %s: %w", path, err)
 			}
@@ -171,9 +177,10 @@ func extract(tr *tar.Reader, targetDir string) error {
 }
 
 func safePath(basePath, targetPath string) (string, error) {
-	if strings.Contains(targetPath, "..") {
-		return "", fmt.Errorf("target path contains '..': %s", targetPath)
+	combinedPath := filepath.Clean(filepath.Join(basePath, targetPath))
+	rel, err := filepath.Rel(basePath, combinedPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("target path %q escapes base directory", targetPath)
 	}
-	combinedPath := filepath.Join(basePath, targetPath)
 	return combinedPath, nil
 }
