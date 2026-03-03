@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/openshift-pipelines/tekton-caches/internal/tar"
 	"gocloud.dev/blob"
@@ -41,8 +42,14 @@ func init() {
 	queryParams = os.Getenv("BLOB_QUERY_PARAMS")
 }
 
+// sanitizeLog strips newline/carriage-return characters from s to prevent log injection.
+func sanitizeLog(s string) string {
+	s = strings.ReplaceAll(s, "\n", "")
+	return strings.ReplaceAll(s, "\r", "")
+}
+
 func Fetch(ctx context.Context, url url.URL, folder string) error {
-	log.Printf("Downloading cache from %s to %s", url.String(), folder)
+	log.Printf("Downloading cache from %s to %s", sanitizeLog(url.String()), sanitizeLog(folder)) //nolint:gosec
 	file, err := os.CreateTemp("", cacheFile)
 	if err != nil {
 		log.Printf("error creating tar file: %s", err)
@@ -83,7 +90,7 @@ func Fetch(ctx context.Context, url url.URL, folder string) error {
 }
 
 func Upload(ctx context.Context, url url.URL, folder string) error {
-	log.Printf("Uploading cache to %s from %s", url.String(), folder)
+	log.Printf("Uploading cache to %s from %s", sanitizeLog(url.String()), sanitizeLog(folder)) //nolint:gosec
 	file, err := os.CreateTemp("", cacheFile)
 	if err != nil {
 		return err
