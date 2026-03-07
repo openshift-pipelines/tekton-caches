@@ -123,7 +123,7 @@ spec:
           - name: CACHE_PATH
             value: $(workspace.source.path)/cache
           - name: WORKING_DIR
-            value: $(worksoaces.source.path)/repo
+            value: $(workspaces.source.path)/repo
           - name: GOOGLE_APPLICATION_CREDENTIALS
             value: $(workspace.google-credentials.path)/$(params.serviceAccountName)
       - # […] something else like go build
