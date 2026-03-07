@@ -29,6 +29,13 @@ func Compress(source, target string) error {
 	tarball := tar.NewWriter(gz)
 	defer tarball.Close()
 
+	// Open root-scoped handle to prevent symlink TOCTOU traversal
+	root, err := os.OpenRoot(source)
+	if err != nil {
+		return fmt.Errorf("opening root directory: %w", err)
+	}
+	defer root.Close()
+
 	// Walk through the source directory
 	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -68,14 +75,8 @@ func Compress(source, target string) error {
 
 		// Write file content for regular files only
 		if info.Mode().IsRegular() {
-			file, err := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("opening file: %w", err)
-			}
-			defer file.Close()
-
-			if _, err := io.Copy(tarball, file); err != nil {
-				return fmt.Errorf("copying file data: %w", err)
+			if err := addFileToTar(root, relPath, tarball); err != nil {
+				return err
 			}
 		}
 
@@ -85,6 +86,22 @@ func Compress(source, target string) error {
 		return fmt.Errorf("walking file tree: %w", err)
 	}
 
+	return nil
+}
+
+// addFileToTar opens a file via the root-scoped handle and copies its content
+// to the tar writer. Using os.Root prevents symlink TOCTOU attacks between
+// filepath.Walk and file open.
+func addFileToTar(root *os.Root, relPath string, tw *tar.Writer) error {
+	file, err := root.Open(relPath)
+	if err != nil {
+		return fmt.Errorf("opening file: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(tw, file); err != nil {
+		return fmt.Errorf("copying file data: %w", err)
+	}
 	return nil
 }
 
