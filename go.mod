@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/google/go-containerregistry v0.21.3
-	github.com/moby/patternmatcher v0.6.0
+	github.com/moby/patternmatcher v0.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/tektoncd/pipeline v1.11.0
