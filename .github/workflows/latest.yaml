@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: ko-build/setup-ko@v0.9
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.1.1
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
           go-version: "1.22"
