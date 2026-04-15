@@ -52,7 +52,7 @@ cloud.google.com/go/storage/experimental
 cloud.google.com/go/storage/internal
 cloud.google.com/go/storage/internal/apiv2
 cloud.google.com/go/storage/internal/apiv2/storagepb
-# github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0
+# github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.31.0
 ## explicit; go 1.24.0
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp
 # github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0
@@ -720,7 +720,7 @@ gocloud.dev/internal/openurl
 gocloud.dev/internal/otel
 gocloud.dev/internal/retry
 gocloud.dev/internal/useragent
-# golang.org/x/crypto v0.49.0
+# golang.org/x/crypto v0.50.0
 ## explicit; go 1.25.0
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/chacha20poly1305
@@ -732,7 +732,7 @@ golang.org/x/crypto/internal/poly1305
 # golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac
 ## explicit; go 1.22.0
 golang.org/x/exp/slices
-# golang.org/x/net v0.52.0
+# golang.org/x/net v0.53.0
 ## explicit; go 1.25.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
@@ -758,17 +758,17 @@ golang.org/x/oauth2/jwt
 ## explicit; go 1.25.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.42.0
+# golang.org/x/sys v0.43.0
 ## explicit; go 1.25.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.41.0
+# golang.org/x/term v0.42.0
 ## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.35.0
+# golang.org/x/text v0.36.0
 ## explicit; go 1.25.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
@@ -817,12 +817,12 @@ google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/api/label
 google.golang.org/genproto/googleapis/api/metric
 google.golang.org/genproto/googleapis/api/monitoredres
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57
-## explicit; go 1.24.0
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478
+## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.79.3
+# google.golang.org/grpc v1.80.0
 ## explicit; go 1.24.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -897,6 +897,7 @@ google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/grpcutil
 google.golang.org/grpc/internal/hierarchy
 google.golang.org/grpc/internal/idle
+google.golang.org/grpc/internal/mem
 google.golang.org/grpc/internal/metadata
 google.golang.org/grpc/internal/pretty
 google.golang.org/grpc/internal/proto/grpc_lookup_v1
@@ -920,7 +921,6 @@ google.golang.org/grpc/internal/xds/balancer
 google.golang.org/grpc/internal/xds/balancer/cdsbalancer
 google.golang.org/grpc/internal/xds/balancer/clusterimpl
 google.golang.org/grpc/internal/xds/balancer/clustermanager
-google.golang.org/grpc/internal/xds/balancer/clusterresolver
 google.golang.org/grpc/internal/xds/balancer/loadstore
 google.golang.org/grpc/internal/xds/balancer/outlierdetection
 google.golang.org/grpc/internal/xds/balancer/priority
