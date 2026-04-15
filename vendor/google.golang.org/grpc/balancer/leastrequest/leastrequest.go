@@ -180,7 +180,7 @@ func (lrb *leastRequestBalancer) UpdateState(state balancer.State) {
 	}
 
 	// If endpoints are no longer ready, no need to count their active RPCs.
-	for endpoint := range lrb.endpointRPCCounts.All() {
+	for _, endpoint := range lrb.endpointRPCCounts.Keys() {
 		if _, ok := newEndpoints.Get(endpoint); !ok {
 			lrb.endpointRPCCounts.Delete(endpoint)
 		}

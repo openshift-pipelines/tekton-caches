@@ -330,57 +330,41 @@ func (upm *urlPathMatcher) match(data *rpcData) bool {
 type remoteIPMatcher struct {
 	// ipNet represents the CidrRange that this matcher was configured with.
 	// This is what will remote and destination IP's will be matched against.
-	ipNet netip.Prefix
+	ipNet *net.IPNet
 }
 
 func newRemoteIPMatcher(cidrRange *v3corepb.CidrRange) (*remoteIPMatcher, error) {
 	// Convert configuration to a cidrRangeString, as Go standard library has
 	// methods that parse cidr string.
 	cidrRangeString := fmt.Sprintf("%s/%d", cidrRange.AddressPrefix, cidrRange.PrefixLen.Value)
-	ipNet, err := netip.ParsePrefix(cidrRangeString)
+	_, ipNet, err := net.ParseCIDR(cidrRangeString)
 	if err != nil {
 		return nil, err
 	}
-	return &remoteIPMatcher{ipNet: ipNet.Masked()}, nil
+	return &remoteIPMatcher{ipNet: ipNet}, nil
 }
 
 func (sim *remoteIPMatcher) match(data *rpcData) bool {
-	host, _, err := net.SplitHostPort(data.peerInfo.Addr.String())
-	if err != nil {
-		// Fallback for addresses without a port.
-		host = data.peerInfo.Addr.String()
-	}
-	ip, err := netip.ParseAddr(host)
-	if err != nil {
-		return false
-	}
-	return sim.ipNet.Contains(ip)
+	ip, _ := netip.ParseAddr(data.peerInfo.Addr.String())
+	return sim.ipNet.Contains(net.IP(ip.AsSlice()))
 }
 
 type localIPMatcher struct {
-	ipNet netip.Prefix
+	ipNet *net.IPNet
 }
 
 func newLocalIPMatcher(cidrRange *v3corepb.CidrRange) (*localIPMatcher, error) {
 	cidrRangeString := fmt.Sprintf("%s/%d", cidrRange.AddressPrefix, cidrRange.PrefixLen.Value)
-	ipNet, err := netip.ParsePrefix(cidrRangeString)
+	_, ipNet, err := net.ParseCIDR(cidrRangeString)
 	if err != nil {
 		return nil, err
 	}
-	return &localIPMatcher{ipNet: ipNet.Masked()}, nil
+	return &localIPMatcher{ipNet: ipNet}, nil
 }
 
 func (dim *localIPMatcher) match(data *rpcData) bool {
-	host, _, err := net.SplitHostPort(data.localAddr.String())
-	if err != nil {
-		// Fallback for addresses without a port.
-		host = data.localAddr.String()
-	}
-	ip, err := netip.ParseAddr(host)
-	if err != nil {
-		return false
-	}
-	return dim.ipNet.Contains(ip)
+	ip, _ := netip.ParseAddr(data.localAddr.String())
+	return dim.ipNet.Contains(net.IP(ip.AsSlice()))
 }
 
 // portMatcher matches on whether the destination port of the RPC matches the
