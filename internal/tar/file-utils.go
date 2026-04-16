@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 )
 
 func Compress(source, target string) error {
+	source = filepath.Clean(source)
+
 	// Create the destination file
 	tarfile, err := os.Create(target)
 	if err != nil {
@@ -29,53 +32,59 @@ func Compress(source, target string) error {
 	tarball := tar.NewWriter(gz)
 	defer tarball.Close()
 
-	// Walk through the source directory
-	err = filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+	root, err := os.OpenRoot(source)
+	if err != nil {
+		return fmt.Errorf("opening source directory: %w", err)
+	}
+	defer root.Close()
+
+	// Walk using root-scoped paths to avoid symlink TOCTOU (gosec G122).
+	err = fs.WalkDir(root.FS(), ".", func(rel string, _ fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("walking to %s: %w", rel, walkErr)
+		}
+
+		info, err := root.Lstat(rel)
 		if err != nil {
-			return fmt.Errorf("walking to %s: %w", path, err)
+			return fmt.Errorf("stat %s: %w", rel, err)
 		}
 
 		var linkTarget string
 		if info.Mode()&os.ModeSymlink != 0 {
-			linkTarget, err = os.Readlink(path)
+			linkTarget, err = root.Readlink(rel)
 			if err != nil {
 				return fmt.Errorf("reading symlink: %w", err)
 			}
 		}
 
-		// Create tar header
 		header, err := tar.FileInfoHeader(info, linkTarget)
 		if err != nil {
 			return fmt.Errorf("creating tar header: %w", err)
 		}
 
-		relPath, err := filepath.Rel(source, path)
-		if err != nil {
-			return fmt.Errorf("getting relative path: %w", err)
-		}
-		header.Name = relPath
+		header.Name = filepath.ToSlash(rel)
 
-		// Preserve UID/GID
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			header.Uid = int(stat.Uid)
 			header.Gid = int(stat.Gid)
 		}
 
-		// Write header
 		if err := tarball.WriteHeader(header); err != nil {
 			return fmt.Errorf("writing header: %w", err)
 		}
 
-		// Write file content for regular files only
 		if info.Mode().IsRegular() {
-			file, err := os.Open(path)
+			file, err := root.Open(rel)
 			if err != nil {
 				return fmt.Errorf("opening file: %w", err)
 			}
-			defer file.Close()
-
-			if _, err := io.Copy(tarball, file); err != nil {
-				return fmt.Errorf("copying file data: %w", err)
+			_, copyErr := io.Copy(tarball, file)
+			closeErr := file.Close()
+			if copyErr != nil {
+				return fmt.Errorf("copying file data: %w", copyErr)
+			}
+			if closeErr != nil {
+				return fmt.Errorf("closing file: %w", closeErr)
 			}
 		}
 
