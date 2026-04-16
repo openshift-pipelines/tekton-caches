@@ -9,7 +9,7 @@ cd $(dirname $(readlink -f ${0}))
 export KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-kind}
 export KUBECONFIG=${HOME}/.kube/config.${KIND_CLUSTER_NAME}
 export DOMAIN_NAME=caches-127-0-0-1.nip.io
-export DOCKER=${DOCKER:-docker}
+export CONTAINER_TOOL=${CONTAINER_TOOL:-podman}
 
 TMPD=$(mktemp -d /tmp/.GITXXXX)
 REG_PORT='5000'
@@ -33,11 +33,11 @@ cleanup() { rm -rf ${TMPD}; }
 trap cleanup EXIT
 
 function start_registry() {
-    running="$(${DOCKER} inspect -f '{{.State.Running}}' ${REG_NAME} 2>/dev/null || echo false)"
+    running="$(${CONTAINER_TOOL} inspect -f '{{.State.Running}}' ${REG_NAME} 2>/dev/null || echo false)"
 
     if [[ ${running} != "true" ]]; then
-	${DOCKER} rm -f "${REG_NAME}" || true
-	${DOCKER} run \
+	${CONTAINER_TOOL} rm -f "${REG_NAME}" || true
+	${CONTAINER_TOOL} run \
 		  -d --restart=always -p "${REG_PORT}:5000" \
 		  -e REGISTRY_HTTP_SECRET=secret \
 		  --name "${REG_NAME}" \
@@ -47,16 +47,22 @@ function start_registry() {
 
 
 function install_kind() {
-    if [[ ${DOCKER} == "podman" ]]; then
+    if [[ ${CONTAINER_TOOL} == "podman" ]]; then
 	    export KIND_EXPERIMENTAL_PROVIDER=podman
     fi
+    # kind extraMounts require this path to exist as a regular file; a missing path
+    # or a directory bind-mount can leave the kubelet broken (e.g. healthz timeouts).
+    mkdir -p "${HOME}/.docker"
+    if [[ ! -f "${HOME}/.docker/config.json" ]]; then
+	    echo '{}' >"${HOME}/.docker/config.json"
+    fi
     ${SUDO} $kind delete cluster --name ${KIND_CLUSTER_NAME} || true
-    sed "s,%DOCKERCFG%,${HOME}/.docker/config.json," kind.yaml >${TMPD}/kconfig.yaml
-    ${SUDO} ${kind} create cluster --name ${KIND_CLUSTER_NAME} --config ${SCRIPT_DIR}/kind.yaml
+    sed "s,%DOCKERCFG%,${HOME}/.docker/config.json," ${SCRIPT_DIR}/kind.yaml >${TMPD}/kconfig.yaml
+    ${SUDO} ${kind} create cluster --name ${KIND_CLUSTER_NAME} --config ${TMPD}/kconfig.yaml
     mkdir -p $(dirname ${KUBECONFIG})
     ${SUDO} ${kind} --name ${KIND_CLUSTER_NAME} get kubeconfig >${KUBECONFIG}
 
-    ${DOCKER} network connect "kind" "${REG_NAME}" 2>/dev/null || true
+    ${CONTAINER_TOOL} network connect "kind" "${REG_NAME}" 2>/dev/null || true
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
