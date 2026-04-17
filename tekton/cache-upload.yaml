@@ -35,7 +35,7 @@ spec:
       default: "false"
     - name: FETCHED
       description: |
-        Wether cache was fetched or not previously
+        Whether cache was fetched or not previously
       type: string
       default: "false"
     - name: FORCE_CACHE_UPLOAD
