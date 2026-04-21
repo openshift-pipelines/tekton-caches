@@ -7,7 +7,7 @@ require (
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	github.com/tektoncd/pipeline v1.11.0
+	github.com/tektoncd/pipeline v1.11.1
 	gocloud.dev v0.45.0
 	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.35.3
