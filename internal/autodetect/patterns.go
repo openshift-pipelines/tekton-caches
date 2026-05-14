@@ -6,14 +6,14 @@ import (
 )
 
 type (
-	Pattern       []string
-	LanguePattern struct {
+	Pattern         []string
+	LanguagePattern struct {
 		Language string
 		Patterns []Pattern
 	}
 )
 
-var languagePatterns = []LanguePattern{
+var languagePatterns = []LanguagePattern{
 	{
 		Language: "go",
 		Patterns: []Pattern{
