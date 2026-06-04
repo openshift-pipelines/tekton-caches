@@ -35,10 +35,11 @@ e2e-docker: ## run e2e tests with a docker registry started
 	make e2e-coverage
 	@docker rm -f $(REGISTRY_NAME) >/dev/null
 
+PKG ?= ./...
 lint: lint-go
 lint-go: ## runs go linter on all go files
 	@echo "Linting go files..."
-	@$(GOLANGCI_LINT) run ./... --modules-download-mode=vendor \
+	@$(GOLANGCI_LINT) run $(PKG) --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
 							--timeout $(TIMEOUT_UNIT)
@@ -87,3 +88,20 @@ github-release: git-tag-release-version release
 	gh release create $(RELEASE_VERSION) --generate-notes && \
 	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/catalog.yaml && \
 	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/resources.tar.gz
+
+
+.PHONY: gitlint
+gitlint: ## Lint commit messages (last commit; set GITLINT_COMMITS=origin/main..HEAD for a range)
+	@command -v gitlint >/dev/null 2>&1 || { \
+		echo "gitlint not found. Install with: pip install gitlint"; \
+		exit 1; \
+	}
+	@if [ -n "$(GITLINT_COMMITS)" ]; then \
+		gitlint --commits "$(GITLINT_COMMITS)"; \
+	else \
+		gitlint; \
+	fi
+
+.PHNY: go-build
+go-build:
+	go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
