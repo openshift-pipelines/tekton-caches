@@ -1,0 +1,31 @@
+name: AgentReady
+on:
+  pull_request:
+    branches:
+      - main
+      - release-v*
+  push:
+    branches:
+      - main
+      - release-v*
+
+jobs:
+  agentready:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AgentReady Assessment
+        run: |
+          mkdir -p reports
+          docker pull ghcr.io/ambient-code/agentready:latest
+          docker run --rm \
+            -v ${{ github.workspace }}:/repo:ro \
+            -v ${{ github.workspace }}/reports:/reports \
+            ghcr.io/ambient-code/agentready:latest \
+            assess /repo --output-dir /reports
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentready-reports
+          path: reports/

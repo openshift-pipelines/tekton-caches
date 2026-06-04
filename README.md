@@ -1,4 +1,7 @@
-# tekton-caches [![build-test-publish](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml/badge.svg)](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml)
+# tekton-caches 
+[![build-test-publish](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml/badge.svg)](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/latest.yaml)
+[![CI](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/ci.yml/badge.svg)](https://github.com/openshift-pipelines/tekton-caches/actions/workflows/ci.yml)
+
 
 This is a tool to cache resources like go cache/maven or others on TektonCD
 pipelines.
