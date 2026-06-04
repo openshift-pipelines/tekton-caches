@@ -69,7 +69,7 @@ jobs:
         with:
           go-version: "1.25"
       - id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # 6.0.0
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # 6.1.0
         with:
           images: ghcr.io/${{ github.repository }}/cache
           flavor: |
