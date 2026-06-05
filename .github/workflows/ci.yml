@@ -14,7 +14,7 @@ jobs:
     name: Lint Code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ lint ]  # Runs after lint/test pass
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build package
         run: |
@@ -44,7 +44,7 @@ jobs:
       - lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -62,7 +62,7 @@ jobs:
     permissions: write-all
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Go
         uses: actions/setup-go@v5
