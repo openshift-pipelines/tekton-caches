@@ -7,17 +7,21 @@
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
+*.swp
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+*.swo
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
 
-# Go workspace file
-go.work
+.DS_Store
+.git
 
-/cache
+cover.out
+coverage.txt
+
+
+.idea/
+.vscode/
+bin/
+out/
+

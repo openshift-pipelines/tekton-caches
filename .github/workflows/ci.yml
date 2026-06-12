@@ -1,0 +1,84 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - release-v*
+  pull_request:
+    branches:
+      - main
+      - release-v*
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - uses: alexellis/arkade-get@master
+        with:
+          golangci-lint: latest
+      - name: Run linters
+        run: |
+          make lint
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: [ lint ]  # Runs after lint/test pass
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build package
+        run: |
+          make go-build
+  test:
+    name: Run Tests
+    needs:
+      - build
+      - lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Run tests with coverage
+        run: make unit-tests
+  publish:
+    name: publish latest
+    needs:
+      - build
+      - test
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # 6.0.0
+        with:
+          images: ghcr.io/${{ github.repository }}/cache
+          flavor: |
+            latest=${{ github.event_name != 'pull_request' }}
+      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # 3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ko-build/setup-ko@v0.9
+      - run: |
+          ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/cache --platform linux/arm64,linux/amd64
