@@ -67,7 +67,7 @@ func uploadCmd() *cobra.Command {
 	cmd.Flags().String(targetFlag, "", "Cache target reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
-	cmd.Flags().Bool(insecureFlag, false, "Wether to use insecure transport or not to upload to insecure registry")
+	cmd.Flags().Bool(insecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")
 
 	return cmd
 }
