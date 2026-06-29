@@ -79,6 +79,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: ko-build/setup-ko@v0.9
+      - uses: ko-build/setup-ko@v0.10
       - run: |
           ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/cache --platform linux/arm64,linux/amd64
