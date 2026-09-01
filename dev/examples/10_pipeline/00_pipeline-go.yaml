@@ -23,6 +23,8 @@ spec:
     - name: force-cache-upload
       type: string
       default: "false"
+    - name: cacheDigest
+      default: ""
   workspaces:
     - name: source
   tasks:
@@ -32,6 +34,9 @@ spec:
         - name: source
           workspace: source
       taskSpec:
+        results:
+          - name: cache-digest
+            value: $(steps.cache-upload.results.digest)
         workspaces:
           - name: source
         params:
@@ -52,7 +57,7 @@ spec:
               resolver: http
               params:
                 - name: url
-                  value: https://raw.githubusercontent.com/tektoncd/catalog/main/stepaction/git-clone/0.1/git-clone.yaml
+                  value: https://raw.githubusercontent.com/tektoncd-catalog/git-clone/refs/heads/main/stepaction/git-clone/git-clone.yaml
             params:
               - name: output-path
                 value: $(workspaces.source.path)/repo
@@ -79,6 +84,8 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
+              - name: CACHE_DIGEST
+                value: $(params.cacheDigest)
           - image: $(params.image)
             workingDir: $(workspaces.source.path)/repo
             name: run-go-build
@@ -111,3 +118,7 @@ spec:
                 value: $(workspaces.source.path)/cache
               - name: WORKING_DIR
                 value: $(workspaces.source.path)/repo
+              - name: FORCE_CACHE_UPLOAD
+                value: $(params.force-cache-upload)
+              - name: FETCHED
+                value: $(steps.cache-fetch.results.fetched)

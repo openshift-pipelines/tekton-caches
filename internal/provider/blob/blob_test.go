@@ -2,11 +2,13 @@ package blob
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/memblob"
 )
@@ -41,9 +43,9 @@ func TestFetchAndUpload(t *testing.T) {
 	testURL, _ := url.Parse("mem://test-bucket/test-object")
 
 	// Test Upload
-	if err := Upload(ctx, *testURL, tempDir); err != nil {
-		t.Fatalf("Upload failed: %v", err)
-	}
+	digest, err := Upload(ctx, *testURL, tempDir)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, digest)
 
 	// Verify the uploaded content
 	data, err := bucket.ReadAll(ctx, "test-object")
@@ -65,7 +67,7 @@ func TestFetchAndUpload(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Test Fetch
-	if err := Fetch(ctx, *testURL, tempDir); err != nil {
+	if err := Fetch(ctx, *testURL, tempDir, digest); err != nil {
 		t.Fatalf("Fetch failed: %v", err)
 	}
 
@@ -77,4 +79,64 @@ func TestFetchAndUpload(t *testing.T) {
 	if len(fetchedFiles) == 0 {
 		t.Errorf("No files were fetched")
 	}
+}
+
+func TestFetchAndUpload_InvalidDigest(t *testing.T) {
+	expectedDigest := "NonExistentDigest"
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "blob_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test file
+	testFile := filepath.Join(tempDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create a mock bucket
+	bucket := memblob.OpenBucket(nil)
+	defer bucket.Close()
+
+	// Override the openBucket function for testing
+	originalOpenBucket := openBucket
+	defer func() { openBucket = originalOpenBucket }()
+	openBucket = func(_ context.Context, _ string) (*blob.Bucket, error) {
+		return bucket, nil
+	}
+	clean = func(_ *blob.Bucket) {}
+
+	ctx := context.Background()
+	testURL, _ := url.Parse("mem://test-bucket/test-object")
+
+	// Test Upload
+	digest, err := Upload(ctx, *testURL, tempDir)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, digest)
+
+	// Verify the uploaded content
+	data, err := bucket.ReadAll(ctx, "test-object")
+	if err != nil {
+		t.Fatalf("Failed to read uploaded data: %v", err)
+	}
+	if len(data) == 0 {
+		t.Errorf("Uploaded data is empty")
+	}
+
+	// Clean up the temp directory
+	os.RemoveAll(tempDir)
+
+	// Create a new temp directory for Fetch
+	tempDir, err = os.MkdirTemp("", "blob_test_fetch")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir for fetch: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test Fetch
+	err = Fetch(ctx, *testURL, tempDir, expectedDigest)
+	assert.EqualError(t, err, fmt.Sprintf("cache integrity validation failed: expected %s, got %s", expectedDigest, digest))
 }

@@ -92,11 +92,16 @@ spec:
       value: $(params.AWS_SHARED_CREDENTIALS_FILE)
     - name: BLOB_QUERY_PARAMS
       value: $(params.BLOB_QUERY_PARAMS)
-  image: quay.io/openshift-pipeline/pipelines-cache-rhel9:next
+  image: quay.io/prbindal/cache:latest
   args: ["$(params.PATTERNS[*])"]
+  results:
+    - name: digest
+      type: string
   script: |
     #!/usr/bin/env sh
-    set -x
+    
+    echo "RESULT_CACHE_FETCHED: $RESULT_CACHE_FETCHED"
+    
     if [[ ${PARAM_FORCE_CACHE_UPLOAD} == "false" && ${RESULT_CACHE_FETCHED} == "true" ]]; then
       echo "no need to upload cache"
       exit 0
@@ -134,3 +139,5 @@ spec:
                         --folder ${PARAM_CACHE_PATH} \
                         --insecure ${PARAM_INSECURE} \
                         --workingdir ${PARAM_WORKING_DIR}
+    # Write the uploaded digest to result
+    cat digest.txt | tee "$(step.results.digest.path)"
