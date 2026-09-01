@@ -19,6 +19,7 @@ const (
 	sourceFlag     = "source"
 	folderFlag     = "folder"
 	insecureFlag   = "insecure"
+	digestFlag     = "digest"
 )
 
 func fetchCmd() *cobra.Command {
@@ -34,6 +35,10 @@ func fetchCmd() *cobra.Command {
 				return err
 			}
 			workingdir, err := cmd.Flags().GetString(workingdirFlag)
+			if err != nil {
+				return err
+			}
+			digest, err := cmd.Flags().GetString(digestFlag)
 			if err != nil {
 				return err
 			}
@@ -66,7 +71,7 @@ func fetchCmd() *cobra.Command {
 			// FIXME: Wrap the error.
 			// If not, warn and do not fail
 			// fmt.Fprintf(os.Stderr, "Repository %s doesn't exists or isn't reachable, fetching no cache.\n", cacheImageRef)
-			return fetch.Fetch(cmd.Context(), hashStr, target, folder, insecure)
+			return fetch.Fetch(cmd.Context(), hashStr, target, folder, digest, insecure)
 		},
 	}
 
@@ -74,8 +79,8 @@ func fetchCmd() *cobra.Command {
 	cmd.Flags().String(sourceFlag, "", "Cache source reference")
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
-	cmd.Flags().Bool(insecureFlag, false, "Wether to use insecure transport or not to upload to insecure registry")
-
+	cmd.Flags().String(digestFlag, "", "expectedDigest to validate downloaded cache archive")
+	cmd.Flags().Bool(insecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")
 	return cmd
 }
 

@@ -16,6 +16,8 @@ nodes:
       hostPath: "%DOCKERCFG%"
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."kind-registry:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
     endpoint = ["http://kind-registry:5000"]
-
+- |-
+  [plugins."io.containerd.cri.v1.images".registry.mirrors."localhost:5000"]
+    endpoint = ["http://kind-registry:5000"]

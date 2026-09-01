@@ -24,6 +24,13 @@ spec:
         Path where to extract the cache content.
         It can refer any folder, backed by a workspace or a volume, or nothing.
       type: string
+    - name: CACHE_DIGEST
+      description: |
+        Digest of the cache being downloaded.
+        If this is not empty and downloaded digest does not match with provided digest then downloaded cache will be 
+        rejected and will not be used
+      type: string
+      default: ""
     - name: WORKING_DIR
       description: |
         The working dir from where the files patterns needs to be taken
@@ -70,6 +77,8 @@ spec:
       value: $(params.CACHE_PATH)
     - name: PARAM_WORKING_DIR
       value: $(params.WORKING_DIR)
+    - name: PARAM_CACHE_DIGEST
+      value: $(params.CACHE_DIGEST)
     - name: PARAM_INSECURE
       value: $(params.INSECURE)
     - name: DOCKER_CONFIG
@@ -115,8 +124,9 @@ spec:
     /ko-app/cache fetch ${PATTERN_FLAGS} \
                         --source ${PARAM_SOURCE} \
                         --folder ${PARAM_CACHE_PATH} \
-                        --insecure ${PARAM_INSECURE} \
-                        --workingdir ${PARAM_WORKING_DIR}
+                        --workingdir ${PARAM_WORKING_DIR}  \
+                        --digest "${PARAM_CACHE_DIGEST}" \
+                        --insecure ${PARAM_INSECURE}
     if [ $? -eq 0 ]; then
       echo -n true > $(step.results.fetched.path)
     else

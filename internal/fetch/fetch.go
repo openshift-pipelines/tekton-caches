@@ -11,7 +11,7 @@ import (
 	"github.com/openshift-pipelines/tekton-caches/internal/provider/oci"
 )
 
-func Fetch(ctx context.Context, hash, target, folder string, insecure bool) error {
+func Fetch(ctx context.Context, hash, target, folder, digest string, insecure bool) error {
 	// check that folder exists or automatically create it
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
 		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
@@ -30,9 +30,9 @@ func Fetch(ctx context.Context, hash, target, folder string, insecure bool) erro
 
 	switch u.Scheme {
 	case "oci":
-		return oci.Fetch(hash, source, folder, insecure)
+		return oci.Fetch(hash, source, folder, digest, insecure)
 	case "s3", "gs":
-		return blob.Fetch(ctx, *u, folder)
+		return blob.Fetch(ctx, *u, folder, digest)
 	default:
 		return fmt.Errorf("unknown schema: %s", target)
 	}

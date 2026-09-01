@@ -21,7 +21,7 @@ func TestUpload(t *testing.T) {
 	u, err := url.Parse(s.URL)
 	assert.NoError(t, err, "Failed to parse the registry URL")
 
-	hash := "testhash"
+	hash := GenerateRandomHash()
 	target := fmt.Sprintf("%s/test/crane:{{hash}}", u.Host)
 	folder := t.TempDir() // Use a temporary directory as the source folder
 	insecure := false
@@ -29,13 +29,18 @@ func TestUpload(t *testing.T) {
 	err = os.WriteFile(fmt.Sprintf("%s/test.txt", folder), []byte("dummy content"), 0o644)
 	assert.NoError(t, err, "Failed to create dummy file")
 
-	err = Upload(context.Background(), hash, target, folder, insecure)
+	digest, err := Upload(context.Background(), hash, target, folder, insecure)
 	assert.NoError(t, err, "Upload should not return any error")
+	assert.NotEmpty(t, digest)
 
-	pulledImage, err := crane.Pull(fmt.Sprintf("%s/test/crane:testhash", u.Host), crane.Insecure)
+	pulledImage, err := crane.Pull(fmt.Sprintf("%s/test/crane:%s", u.Host, hash), crane.Insecure)
 	assert.NoError(t, err, "Failed to pull the image back from the registry")
-
 	assert.NotNil(t, pulledImage, "The pulled image should not be nil")
+	pullDigest, err := pulledImage.Digest()
+	assert.NoError(t, err, "Failed to get the digest of the pulled image")
+
+	// Pulled digest should be same as returned by Upload
+	assert.Equal(t, digest, pullDigest.String())
 
 	s.Close()
 }

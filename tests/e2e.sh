@@ -8,7 +8,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Apply git-clone task to avoid run time resolution
-kubectl apply -f  https://raw.githubusercontent.com/tektoncd/catalog/main/stepaction/git-clone/0.2/git-clone.yaml
+kubectl apply -f  https://raw.githubusercontent.com/tektoncd-catalog/git-clone/refs/heads/main/stepaction/git-clone/git-clone.yaml
 
 #Create Tekton-Cache Step Actions
 kustomize build dev | ko apply -Bf -

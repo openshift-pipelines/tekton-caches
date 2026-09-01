@@ -24,4 +24,4 @@ coverage.txt
 .vscode/
 bin/
 out/
-
+.bin/

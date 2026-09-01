@@ -16,7 +16,7 @@ import (
 
 const CacheFile = "cache.tar.gz"
 
-func Upload(_ context.Context, hash, target, folder string, insecure bool) error {
+func Upload(_ context.Context, hash, target, folder string, insecure bool) (string, error) {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Upload %s content to oci image %s\n", folder, cacheImageRef)
 
@@ -27,12 +27,12 @@ func Upload(_ context.Context, hash, target, folder string, insecure bool) error
 
 	file, err := os.CreateTemp("", CacheFile)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer os.Remove(file.Name())
 
 	if err := tar.Compress(folder, file.Name()); err != nil {
-		return err
+		return "", err
 	}
 
 	// FIXME: add context as option
@@ -40,7 +40,7 @@ func Upload(_ context.Context, hash, target, folder string, insecure bool) error
 	if err != nil {
 		// If not, warn and do not fail
 		fmt.Fprintf(os.Stderr, "Warning: %s", err)
-		return nil
+		return "", nil
 	}
 
 	options := []crane.Option{}
@@ -48,8 +48,13 @@ func Upload(_ context.Context, hash, target, folder string, insecure bool) error
 		options = append(options, crane.Insecure)
 	}
 	if err := crane.Push(image, cacheImageRef, options...); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	digest, err := image.Digest()
+	if err != nil {
+		return "", err
+	}
+
+	return digest.String(), nil
 }
