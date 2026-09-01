@@ -11,7 +11,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/crane"
 )
 
-func Fetch(hash, target, folder string, insecure bool) error {
+func Fetch(hash, target, folder, expectedDigest string, insecure bool) error {
 	cacheImageRef := strings.ReplaceAll(target, "{{hash}}", hash)
 	fmt.Fprintf(os.Stderr, "Trying to fetch oci image %s in %s\n", cacheImageRef, folder)
 
@@ -24,6 +24,17 @@ func Fetch(hash, target, folder string, insecure bool) error {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: %s\n", err)
 		return err
+	}
+
+	// Validate digest if expectedDigest was provided
+	actualDigest, _ := image.Digest()
+	if expectedDigest != "" {
+		if actualDigest.String() != expectedDigest {
+			return fmt.Errorf("OCI integrity validation failed! expected %s, calculated %s", expectedDigest, actualDigest)
+		}
+		fmt.Fprintf(os.Stderr, "OCI cache digest validated successfully (%s)\n", actualDigest)
+	} else {
+		fmt.Fprintf(os.Stderr, "No expected digest provided; skipping validation. %s\n", actualDigest)
 	}
 
 	f, err := os.Create(filepath.Join(folder, CacheFile))

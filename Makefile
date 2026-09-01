@@ -6,6 +6,8 @@ REGISTRY_NAME ?= registry
 GOLANGCI_LINT=golangci-lint
 TIMEOUT_UNIT = 20m
 GOFUMPT=gofumpt
+TEKTON_VERSION ?= $(shell go list -m -f "{{ .Version }}" github.com/tektoncd/pipeline)
+KUBECTL ?= kubectl
 
 BIN = $(CURDIR)/.bin
 # release directory where the Tekton resources are rendered into.
@@ -19,12 +21,12 @@ $(BIN)/catalog-cd: $(BIN)
 
 
 
-e2e-coverage: ## run e2e tests with coverage
+e2e-coverage:  ## run e2e tests with coverage
 	tests/e2e.sh
 	@go test -v -failfast -count=1 -tags=$(E2E_TAG) ./tests/ -coverpkg=./... -coverprofile /tmp/coverage.out
 	@go tool cover -func /tmp/coverage.out
 
-e2e: e2e-coverage
+e2e: kind tekton e2e-coverage
 
 e2e-docker: ## run e2e tests with a docker registry started
 	@if [[ $$(docker ps --filter name=$(REGISTRY_NAME) --format '{{.ID}}') == "" ]]; then \
@@ -105,3 +107,14 @@ gitlint: ## Lint commit messages (last commit; set GITLINT_COMMITS=origin/main..
 .PHNY: go-build
 go-build:
 	go build -tags strictfipsruntime  -v -o /tmp/cache  ./cmd/cache
+
+.PHONY: tekton
+tekton:
+	$(KUBECTL) apply --server-side -f https://github.com/tektoncd/pipeline/releases/download/$(TEKTON_VERSION)/release.yaml
+	$(KUBECTL) wait --for=condition=Available deployment --all -n tekton-pipelines --timeout=300s
+
+.PHONY: kind
+kind:
+	set -x
+	./hack/kind-install.sh
+	kind export kubeconfig
