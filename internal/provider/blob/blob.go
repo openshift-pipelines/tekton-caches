@@ -24,13 +24,35 @@ import (
 )
 
 const (
-	cacheFile = "cache.tar.gz"
+	cacheFile             = "cache.tar.gz"
+	EnvBlobQueryParamsKey = "BLOB_QUERY_PARAMS"
 )
 
 var (
-	queryParams string
-	openBucket  = func(ctx context.Context, urlString string) (*blob.Bucket, error) {
-		bucket, err := blob.OpenBucket(ctx, urlString+queryParams)
+	allowedParams = map[string]bool{
+		"region":           true,
+		"s3ForcePathStyle": true,
+		"accelerate":       true,
+		"fips":             true,
+	}
+
+	// Blocked parameters that MUST NOT be set via user or untrusted config.
+	forbiddenParams = map[string]bool{
+		"endpoint":      true,
+		"disable_https": true,
+		"domain":        true,
+	}
+	openBucket = func(ctx context.Context, urlString string) (*blob.Bucket, error) {
+		sanitizedQueryParams, err2 := sanitizeQueryParams()
+		if err2 != nil {
+			return nil, err2
+		}
+		bucketURL := urlString
+
+		if len(sanitizedQueryParams) > 0 {
+			bucketURL += "?" + sanitizedQueryParams.Encode()
+		}
+		bucket, err := blob.OpenBucket(ctx, bucketURL)
 		return bucket, err
 	}
 	clean = func(bucket *blob.Bucket) {
@@ -41,9 +63,28 @@ var (
 	}
 )
 
-//nolint:gochecknoinits
-func init() {
-	queryParams = os.Getenv("BLOB_QUERY_PARAMS")
+func sanitizeQueryParams() (url.Values, error) {
+	// Parse the query parameters safely
+	queryParams := os.Getenv(EnvBlobQueryParamsKey)
+	values, err := url.ParseQuery(queryParams)
+	if err != nil {
+		return nil, fmt.Errorf("invalid query parameters: %w", err)
+	}
+	sanitizedValues := url.Values{}
+	for key, val := range values {
+		lowerKey := strings.ToLower(key)
+
+		// Explicitly reject forbidden parameters
+		if forbiddenParams[lowerKey] {
+			return nil, fmt.Errorf("security policy violation: parameter %q is forbidden", key)
+		}
+
+		// Only retain parameters that are explicitly allowed
+		if allowedParams[key] || allowedParams[lowerKey] {
+			sanitizedValues[key] = val
+		}
+	}
+	return sanitizedValues, nil
 }
 
 // sanitizeLog strips newline/carriage-return characters from s to prevent log injection.

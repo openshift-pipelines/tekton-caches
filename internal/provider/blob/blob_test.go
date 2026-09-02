@@ -140,3 +140,39 @@ func TestFetchAndUpload_InvalidDigest(t *testing.T) {
 	err = Fetch(ctx, *testURL, tempDir, expectedDigest)
 	assert.EqualError(t, err, fmt.Sprintf("cache integrity validation failed: expected %s, got %s", expectedDigest, digest))
 }
+
+// When BLOB_QUERY_PARAMS is not set
+// should return empty queryParams.
+func TestSanitizeQueryParams_Blank(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "")
+	sanitizedQueryParams, err := sanitizeQueryParams()
+	assert.NoError(t, err)
+	assert.Empty(t, sanitizedQueryParams)
+}
+
+// When BLOB_QUERY_PARAMS is set to allowed values
+// All query params should be retained.
+func TestSanitizeQueryParams_Allowed(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "fips=true")
+	sanitizedQueryParams, err := sanitizeQueryParams()
+	assert.NoError(t, err)
+	assert.Equal(t, "true", sanitizedQueryParams.Get("fips"))
+}
+
+// When BLOB_QUERY_PARAMS is set to Disallowed values
+// If  forbidden values are set then should return error.
+func TestSanitizeQueryParams_Forbidden(t *testing.T) {
+	t.Setenv("BLOB_QUERY_PARAMS", "endpoint")
+	sanitizedQueryParams, err := sanitizeQueryParams()
+	assert.EqualError(t, err, "security policy violation: parameter \"endpoint\" is forbidden")
+	assert.Empty(t, sanitizedQueryParams)
+}
+
+// When BLOB_QUERY_PARAMS is set to Random values
+// When random QueryParams are set then those should be filtered out.
+func TestSanitizeQueryParams_Random(t *testing.T) {
+	t.Setenv("BLOB_QUERY_PARAMS", "test")
+	sanitizedQueryParams, err := sanitizeQueryParams()
+	assert.NoError(t, err)
+	assert.Empty(t, sanitizedQueryParams)
+}
