@@ -25,10 +25,7 @@ spec:
         It can refer any folder, backed by a workspace or a volume, or nothing.
       type: string
     - name: CACHE_DIGEST
-      description: |
-        Digest of the cache being downloaded.
-        If this is not empty and downloaded digest does not match with provided digest then downloaded cache will be 
-        rejected and will not be used
+      description: "Digest of the cache being downloaded.\nIf this is not empty and downloaded digest does not match with provided digest then downloaded cache will be \nrejected and will not be used\n"
       type: string
       default: ""
     - name: WORKING_DIR
@@ -91,44 +88,6 @@ spec:
       value: $(params.AWS_SHARED_CREDENTIALS_FILE)
     - name: BLOB_QUERY_PARAMS
       value: $(params.BLOB_QUERY_PARAMS)
-  image: quay.io/openshift-pipeline/pipelines-cache-rhel9:next
+  image: quay.io/prbindal/cache:latest
   args: ["$(params.PATTERNS[*])"]
-  script: |
-    #!/bin/sh
-    PATTERN_FLAGS=""
-    echo "Patterns: $*"
-    for p in $*; do
-      PATTERN_FLAGS="${PATTERN_FLAGS} --pattern ${p}"
-    done
-
-    if [[ -n $DOCKER_CONFIG ]]; then
-      echo "Setting DOCKER_CONFIG $DOCKER_CONFIG"
-      # if config.json exists at workspace root, we use that
-        if test -f "${DOCKER_CONFIG}/config.json"; then
-          export DOCKER_CONFIG="${DOCKER_CONFIG}"    
-        # else we look for .dockerconfigjson at the root
-        elif test -f "${DOCKER_CONFIG}/.dockerconfigjson"; then
-          # ensure .docker exist before the copying the content
-          if [ ! -d "$HOME/.docker" ]; then
-            mkdir -p "$HOME/.docker"
-          fi
-          cp "${DOCKER_CONFIG}/.dockerconfigjson" "$HOME/.docker/config.json"
-          export DOCKER_CONFIG="$HOME/.docker"    
-        else
-          # need to error out if neither files are present
-          echo "neither 'config.json' nor '.dockerconfigjson' found at $DOCKER_CONFIG"
-          exit 1
-        fi
-     fi    
-
-    /ko-app/cache fetch ${PATTERN_FLAGS} \
-                        --source ${PARAM_SOURCE} \
-                        --folder ${PARAM_CACHE_PATH} \
-                        --workingdir ${PARAM_WORKING_DIR}  \
-                        --digest "${PARAM_CACHE_DIGEST}" \
-                        --insecure ${PARAM_INSECURE}
-    if [ $? -eq 0 ]; then
-      echo -n true > $(step.results.fetched.path)
-    else
-      echo -n false > $(step.results.fetched.path)
-    fi
+  script: "#!/bin/sh\nPATTERN_FLAGS=\"\"\necho \"Patterns: $*\"\nfor p in $*; do\n  PATTERN_FLAGS=\"${PATTERN_FLAGS} --pattern ${p}\"\ndone\n\nif [[ -n $DOCKER_CONFIG ]]; then\n  echo \"Setting DOCKER_CONFIG $DOCKER_CONFIG\"\n  # if config.json exists at workspace root, we use that\n    if test -f \"${DOCKER_CONFIG}/config.json\"; then\n      export DOCKER_CONFIG=\"${DOCKER_CONFIG}\"    \n    # else we look for .dockerconfigjson at the root\n    elif test -f \"${DOCKER_CONFIG}/.dockerconfigjson\"; then\n      # ensure .docker exist before the copying the content\n      if [ ! -d \"$HOME/.docker\" ]; then\n        mkdir -p \"$HOME/.docker\"\n      fi\n      cp \"${DOCKER_CONFIG}/.dockerconfigjson\" \"$HOME/.docker/config.json\"\n      export DOCKER_CONFIG=\"$HOME/.docker\"    \n    else\n      # need to error out if neither files are present\n      echo \"neither 'config.json' nor '.dockerconfigjson' found at $DOCKER_CONFIG\"\n      exit 1\n    fi\n fi    \n\n/ko-app/cache fetch ${PATTERN_FLAGS} \\\n                    --source ${PARAM_SOURCE} \\\n                    --folder ${PARAM_CACHE_PATH} \\\n                    --workingdir ${PARAM_WORKING_DIR}  \\\n                    --digest \"${PARAM_CACHE_DIGEST}\" \\\n                    --insecure ${PARAM_INSECURE}\nif [ $? -eq 0 ]; then\n  echo -n true > $(step.results.fetched.path)\nelse\n  echo -n false > $(step.results.fetched.path)\nfi\n"
