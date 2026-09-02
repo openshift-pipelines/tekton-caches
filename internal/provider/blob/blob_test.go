@@ -144,6 +144,7 @@ func TestFetchAndUpload_InvalidDigest(t *testing.T) {
 // When BLOB_QUERY_PARAMS is not set
 // should return empty queryParams.
 func TestSanitizeQueryParams_Blank(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "")
 	sanitizedQueryParams, err := sanitizeQueryParams()
 	assert.NoError(t, err)
 	assert.Empty(t, sanitizedQueryParams)
@@ -152,11 +153,10 @@ func TestSanitizeQueryParams_Blank(t *testing.T) {
 // When BLOB_QUERY_PARAMS is set to allowed values
 // All query params should be retained.
 func TestSanitizeQueryParams_Allowed(t *testing.T) {
-	t.Setenv("BLOB_QUERY_PARAMS", "fips")
+	t.Setenv(EnvBlobQueryParamsKey, "fips=true")
 	sanitizedQueryParams, err := sanitizeQueryParams()
 	assert.NoError(t, err)
-	assert.NotEmpty(t, sanitizedQueryParams)
-	assert.Contains(t, sanitizedQueryParams, "fips")
+	assert.Equal(t, "true", sanitizedQueryParams.Get("fips"))
 }
 
 // When BLOB_QUERY_PARAMS is set to Disallowed values

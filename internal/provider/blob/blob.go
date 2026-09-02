@@ -32,7 +32,7 @@ var (
 	allowedParams = map[string]bool{
 		"region":           true,
 		"s3ForcePathStyle": true,
-		"use_accelerate":   true,
+		"accelerate":       true,
 		"fips":             true,
 	}
 
