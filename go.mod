@@ -3,7 +3,7 @@ module github.com/openshift-pipelines/tekton-caches
 go 1.26
 
 require (
-	github.com/google/go-containerregistry v0.22.0
+	github.com/google/go-containerregistry v0.22.1
 	github.com/moby/patternmatcher v0.6.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
