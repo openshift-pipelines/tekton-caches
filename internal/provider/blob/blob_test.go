@@ -140,3 +140,67 @@ func TestFetchAndUpload_InvalidDigest(t *testing.T) {
 	err = Fetch(ctx, *testURL, tempDir, expectedDigest)
 	assert.EqualError(t, err, fmt.Sprintf("cache integrity validation failed: expected %s, got %s", expectedDigest, digest))
 }
+
+// When no query param is given
+// should return empty queryParams.
+func TestSanitizeQueryParams_Blank(t *testing.T) {
+	sanitizedQueryParams, err := sanitizeQueryParams(mustParseQuery(t, ""))
+	assert.NoError(t, err)
+	assert.Empty(t, sanitizedQueryParams)
+}
+
+// When query params are allowed
+// All query params should be retained with the key spelling the driver expects.
+func TestSanitizeQueryParams_Allowed(t *testing.T) {
+	sanitizedQueryParams, err := sanitizeQueryParams(mustParseQuery(t, "fips=true&S3FORCEPATHSTYLE=true&sseType=AES256"))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, len(sanitizedQueryParams))
+	assert.Equal(t, "true", sanitizedQueryParams.Get("fips"))
+	assert.Equal(t, "true", sanitizedQueryParams.Get("s3ForcePathStyle"))
+	assert.Equal(t, "AES256", sanitizedQueryParams.Get("ssetype"))
+}
+
+// When a forbidden query param is given
+// should return an error.
+func TestSanitizeQueryParams_Forbidden(t *testing.T) {
+	sanitizedQueryParams, err := sanitizeQueryParams(mustParseQuery(t, "endpoint"))
+	assert.EqualError(t, err, "security policy violation: parameter \"endpoint\" is not from allowed list")
+	assert.Empty(t, sanitizedQueryParams)
+}
+
+func TestBucketUrl_FinalURL(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "fips=true&sseType=AES256")
+	u, err := bucketURL("s3://test-bucket/test-object?S3FORCEPATHSTYLE=false")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "s3://test-bucket/test-object?fips=true&s3ForcePathStyle=false&ssetype=AES256", u.String())
+}
+
+// Query params present in the URL itself must be sanitized as well, not just the
+// ones coming from BLOB_QUERY_PARAMS.
+func TestOpenBucket_SanitizesURLQueryParams(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "")
+	bucket, err := openBucket(context.Background(), "s3://test-bucket/test-object?endpoint=http://attacker.example.com")
+	assert.EqualError(t, err, "security policy violation: parameter \"endpoint\" is not from allowed list")
+	assert.Nil(t, bucket)
+}
+
+func TestOpenBucket_InvalidUrl(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "")
+	_, err := openBucket(context.Background(), "s3:/test-bucket/test-object")
+	assert.Error(t, err)
+}
+
+func TestOpenBucket_InvalidQueryParams(t *testing.T) {
+	t.Setenv(EnvBlobQueryParamsKey, "endpoint=http://attacker.example.com;somerandomvalue")
+	_, err := openBucket(context.Background(), "s3://test-bucket/test-object")
+	assert.Error(t, err)
+}
+
+func mustParseQuery(t *testing.T, query string) url.Values {
+	t.Helper()
+	values, err := url.ParseQuery(query)
+	assert.NoError(t, err)
+	return values
+}
