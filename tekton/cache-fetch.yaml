@@ -79,6 +79,12 @@ spec:
       value: $(params.WORKING_DIR)
     - name: PARAM_CACHE_DIGEST
       value: $(params.CACHE_DIGEST)
+    # Salts the cache key so that the entries of different tenants stay distinct
+    # on a shared cache backend. The step runs in the namespace of the TaskRun.
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
     - name: PARAM_INSECURE
       value: $(params.INSECURE)
     - name: DOCKER_CONFIG
@@ -125,6 +131,7 @@ spec:
                         --source ${PARAM_SOURCE} \
                         --folder ${PARAM_CACHE_PATH} \
                         --workingdir ${PARAM_WORKING_DIR}  \
+                        --namespace "${POD_NAMESPACE}" \
                         --digest "${PARAM_CACHE_DIGEST}" \
                         --insecure ${PARAM_INSECURE}
     if [ $? -eq 0 ]; then

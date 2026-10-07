@@ -24,7 +24,7 @@ import (
 const (
 	defaultReg         = "oci://127.0.0.1:5000/cache/go"
 	goModContent       = `module foo/bar/hello.moto`
-	hashOfGoModContent = "749da1a3a827cde86850743dd2bbf6b65d13497d4b0ecf88d1df7a77ce687f86"
+	hashOfGoModContent = "6956bd61dbbd01446eafe62e9b5cfb1b5905d031ff86b7641039ac2013ab31d2"
 )
 
 func TestOCIUpload(t *testing.T) {
@@ -38,7 +38,7 @@ func TestOCIUpload(t *testing.T) {
 	defer tmpdir.Remove()
 	defer env.ChangeWorkingDir(t, tmpdir.Path())()
 	assert.NilError(t, os.WriteFile(filepath.Join(tmpdir.Path(), "go.mod"), []byte(goModContent), 0o644))
-	hash, err := cacheutils.Compute([]string{filepath.Join(tmpdir.Path(), "go.mod")})
+	hash, err := cacheutils.Compute("", tmpdir.Path(), []string{filepath.Join(tmpdir.Path(), "go.mod")})
 	assert.Equal(t, hash, hashOfGoModContent)
 	assert.NilError(t, err)
 	assert.NilError(t, upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true))
