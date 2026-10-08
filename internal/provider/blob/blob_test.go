@@ -157,7 +157,7 @@ func TestSanitizeQueryParams_Allowed(t *testing.T) {
 
 	assert.Equal(t, 3, len(sanitizedQueryParams))
 	assert.Equal(t, "true", sanitizedQueryParams.Get("fips"))
-	assert.Equal(t, "true", sanitizedQueryParams.Get("s3ForcePathStyle"))
+	assert.Equal(t, "true", sanitizedQueryParams.Get("use_path_style"))
 	assert.Equal(t, "AES256", sanitizedQueryParams.Get("ssetype"))
 }
 
@@ -189,12 +189,72 @@ func TestSanitizeQueryParams_Forbidden(t *testing.T) {
 	assert.Empty(t, sanitizedQueryParams)
 }
 
+func TestSanitizeQueryParams_RejectsDuplicates(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		key   string
+	}{
+		{name: "same spelling", query: "fips=true&fips=false", key: "fips"},
+		{name: "mixed case", query: "fips=true&FIPS=false", key: "fips"},
+		{name: "path style aliases", query: "s3ForcePathStyle=true&use_path_style=false", key: "use_path_style"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			sanitizedQueryParams, err := sanitizeQueryParams(mustParseQuery(t, test.query))
+			assert.EqualError(t, err, fmt.Sprintf("security policy violation: parameter %q must be specified exactly once", test.key))
+			assert.Empty(t, sanitizedQueryParams)
+		})
+	}
+}
+
 func TestBucketUrl_FinalURL(t *testing.T) {
 	t.Setenv(EnvBlobQueryParamsKey, "fips=true&sseType=AES256")
 	u, err := bucketURL("s3://test-bucket/test-object?S3FORCEPATHSTYLE=false")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "s3://test-bucket/test-object?fips=true&s3ForcePathStyle=false&ssetype=AES256", u.String())
+	assert.Equal(t, "s3://test-bucket/test-object?fips=true&ssetype=AES256&use_path_style=false", u.String())
+}
+
+func TestBucketURL_AcceptsLegacyQueryDelimiter(t *testing.T) {
+	for _, query := range []string{"?fips=true", "&fips=true"} {
+		t.Run(query[:1], func(t *testing.T) {
+			t.Setenv(EnvBlobQueryParamsKey, query)
+			u, err := bucketURL("s3://test-bucket/test-object")
+			assert.NoError(t, err)
+			assert.Equal(t, "s3://test-bucket/test-object?fips=true", u.String())
+		})
+	}
+}
+
+func TestBucketURL_RejectsURLAndEnvironmentDuplicate(t *testing.T) {
+	tests := []struct {
+		name        string
+		url         string
+		queryParams string
+		key         string
+	}{
+		{
+			name:        "mixed case",
+			url:         "s3://test-bucket/test-object?fips=true",
+			queryParams: "FIPS=false",
+			key:         "fips",
+		},
+		{
+			name:        "path style aliases",
+			url:         "s3://test-bucket/test-object?s3ForcePathStyle=true",
+			queryParams: "use_path_style=false",
+			key:         "use_path_style",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv(EnvBlobQueryParamsKey, test.queryParams)
+			u, err := bucketURL(test.url)
+			assert.EqualError(t, err, fmt.Sprintf("security policy violation: parameter %q must be specified exactly once", test.key))
+			assert.Nil(t, u)
+		})
+	}
 }
 
 // Query params present in the URL itself must be sanitized as well, not just the

@@ -34,7 +34,7 @@ var (
 	allowedParams = map[string]string{
 		// S3 (gocloud.dev/blob/s3blob and gocloud.dev/aws).
 		"region":           "region",
-		"s3forcepathstyle": "s3ForcePathStyle",
+		"s3forcepathstyle": "use_path_style",
 		"accelerate":       "accelerate",
 		"fips":             "fips",
 		"ssetype":          "ssetype",
@@ -58,7 +58,8 @@ var (
 		// present in the URL, then sanitize the whole set so that parameters coming
 		// from the URL are validated as well.
 		q := u.Query()
-		queryParams, err := url.ParseQuery(os.Getenv(EnvBlobQueryParamsKey))
+		rawQuery := strings.TrimLeft(os.Getenv(EnvBlobQueryParamsKey), "?&")
+		queryParams, err := url.ParseQuery(rawQuery)
 		if err != nil {
 			return nil, fmt.Errorf("invalid query parameters: %w", err)
 		}
@@ -96,14 +97,19 @@ var (
 // allowed list and normalizes the keys to the spelling the driver expects.
 func sanitizeQueryParams(values url.Values) (url.Values, error) {
 	sanitizedValues := url.Values{}
-	for key, val := range values {
-		// Only retain parameters that are explicitly allowed
+	for key, paramValues := range values {
+		// Only retain parameters that are explicitly allowed.
 		canonicalKey, ok := allowedParams[strings.ToLower(key)]
 		if !ok {
 			return nil, fmt.Errorf("security policy violation: parameter %q is not from allowed list", key)
 		}
-		// key is repeated in query Params or URL then only last value will be retained.
-		sanitizedValues[canonicalKey] = val
+		if len(paramValues) != 1 {
+			return nil, fmt.Errorf("security policy violation: parameter %q must be specified exactly once", canonicalKey)
+		}
+		if _, exists := sanitizedValues[canonicalKey]; exists {
+			return nil, fmt.Errorf("security policy violation: parameter %q must be specified exactly once", canonicalKey)
+		}
+		sanitizedValues.Set(canonicalKey, paramValues[0])
 	}
 	return sanitizedValues, nil
 }
