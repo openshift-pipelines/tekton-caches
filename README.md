@@ -150,6 +150,30 @@ spec:
 `bound-sa-token` workspace isn't required if Workload Identity federation isn't setup. Here we assumed an OIDC is
 configured in OpenShift.
 
+## Cache key
+
+The `{{hash}}` used in `SOURCE` and `TARGET` is a SHA-256 computed over, in order:
+
+- a fixed domain separator, so these keys can never be confused with any other hash of the same files;
+- the namespace the step runs in;
+- the files matched by `PATTERNS`, sorted by their path relative to `WORKING_DIR`, each contributing its relative
+  path, its size and the SHA-256 of its content.
+
+Every variable length part is length prefixed before being hashed, so two different sets of files can't be
+concatenated into the same byte stream. Only the content of the matched files matters, not where the workspace is
+checked out.
+
+The namespace acts as a tenant salt: two pipelines running in different namespaces over the same files get different
+keys, so they can't collide on a cache backend shared between tenants. There is no param for it — the StepActions read
+it from the downward API (`metadata.namespace`), which is the namespace of the `TaskRun`. The consequence is that a
+cache entry written from one namespace is never read from another; if several namespaces must deliberately share a
+cache, give them a common `TARGET`/`SOURCE` without `{{hash}}`, or run the `cache` binary directly with a fixed
+`--namespace`.
+
+> [!NOTE]
+> The key computation changed to fix a collision between different file layouts. Upgrading from a version prior to this
+> change invalidates existing cache entries once: the first run of each pipeline misses and repopulates the cache.
+
 ## Param Names
 
 Here is the list of params being used in cache step actions.
