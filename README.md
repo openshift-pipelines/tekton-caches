@@ -154,26 +154,30 @@ configured in OpenShift.
 
 The `{{hash}}` used in `SOURCE` and `TARGET` is a SHA-256 computed over, in order:
 
-- a fixed domain separator, so these keys can never be confused with any other hash of the same files;
+- a fixed domain separator;
 - the namespace the step runs in;
 - the number of matched files;
 - the files matched by `PATTERNS`, sorted by their path relative to `WORKING_DIR`, each contributing its relative
   path, its size and the SHA-256 of its content.
 
-Every variable-length part is length prefixed before being hashed, so two different sets of files can't be
-concatenated into the same byte stream. The matched files' relative paths and contents determine the key, but the
-absolute location where the workspace is checked out does not.
+The domain separator, namespace and each relative path are length-prefixed before being hashed. The file count and
+file sizes use fixed-width integers, and each content digest has a fixed width. These encodings make field boundaries
+unambiguous. Relative paths, sizes and file contents all contribute to the key; only the checkout location and match
+order are ignored.
 
-The namespace acts as a tenant salt: two pipelines running in different namespaces over the same files get different
-keys, so they can't collide on a cache backend shared between tenants. There is no param for it — the StepActions read
-it from the downward API (`metadata.namespace`), which is the namespace of the `TaskRun`. The consequence is that a
-cache entry written from one namespace is never read from another; if several namespaces must deliberately share a
-cache, give them a common `TARGET`/`SOURCE` without `{{hash}}`, or run the `cache` binary directly with a fixed
-`--namespace`.
+The StepActions read the `TaskRun` namespace from the downward API (`metadata.namespace`), so the same matched files
+produce different keys in differently named namespaces. A `SOURCE` or `TARGET` is scoped by that key only when it
+contains `{{hash}}`. This is defense in depth against unintended cache sharing, not an access-control boundary:
+direct CLI callers can choose `--namespace`, literal references bypass hash substitution, and namespace names can
+repeat across clusters. Backend credentials and policies must enforce tenant isolation.
+
+To deliberately share generated entries across namespaces, retain `{{hash}}` and invoke the `cache` binary with the
+same explicit, non-empty `--namespace` value.
 
 > [!NOTE]
-> The key computation changed to fix a collision between different file layouts. Upgrading from a version prior to this
-> change invalidates existing cache entries once: the first run of each pipeline misses and repopulates the cache.
+> The key format changed to fix collisions between different file layouts. Hash-templated references will miss entries
+> created with the previous format. A successful upload creates a new entry; old objects remain until the backend's
+> retention policy removes them.
 
 ## Param Names
 

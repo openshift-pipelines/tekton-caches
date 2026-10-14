@@ -29,14 +29,12 @@ type hashedFile struct {
 
 // Compute returns the cache key for files, as a lowercase hex sha256.
 //
-// Every variable length field (the namespace, the file paths and the file
-// contents) is length prefixed before being hashed, so that distinct inputs
-// can't be concatenated into the same byte stream: ["AB", "C"] and ["A", "BC"]
-// produce different keys.
+// The domain separator, namespace and file paths are length-prefixed. The file
+// count and sizes are fixed-width integers, and each content digest has a fixed
+// width, so field boundaries are unambiguous.
 //
-// namespace is an optional tenant salt. When it is empty, pipelines running in
-// different namespaces over the same files share a key, which is only safe on a
-// cache backend that isn't shared between tenants.
+// namespace scopes the generated key. An empty value omits namespace scoping.
+// Backend authorization is still required for access isolation.
 func Compute(namespace, workingdir string, files []string) (string, error) {
 	if workingdir == "" {
 		workingdir = "."
