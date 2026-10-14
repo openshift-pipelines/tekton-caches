@@ -79,8 +79,8 @@ spec:
       value: $(params.WORKING_DIR)
     - name: PARAM_CACHE_DIGEST
       value: $(params.CACHE_DIGEST)
-    # Salts the cache key so that the entries of different tenants stay distinct
-    # on a shared cache backend. The step runs in the namespace of the TaskRun.
+    # Scopes generated cache keys to the TaskRun namespace. Backend access
+    # controls remain responsible for tenant isolation.
     - name: POD_NAMESPACE
       valueFrom:
         fieldRef:

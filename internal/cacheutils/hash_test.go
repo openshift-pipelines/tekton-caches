@@ -34,8 +34,8 @@ func compute(t *testing.T, namespace string, files map[string]string, order ...s
 	return hash
 }
 
-// TestComputeFileBoundaries is the SRVKP-13575 repro: hashing the raw
-// concatenation of the file contents made ["AB", "C"] and ["A", "BC"] collide.
+// TestComputeFileBoundaries verifies that framed inputs distinguish
+// ["AB", "C"] from ["A", "BC"].
 func TestComputeFileBoundaries(t *testing.T) {
 	first := compute(t, "", map[string]string{"a": "AB", "b": "C"}, "a", "b")
 	second := compute(t, "", map[string]string{"a": "A", "b": "BC"}, "a", "b")
