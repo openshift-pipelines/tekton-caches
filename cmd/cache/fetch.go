@@ -42,6 +42,10 @@ func fetchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			namespace, err := cmd.Flags().GetString(flags.NamespaceFlag)
+			if err != nil {
+				return err
+			}
 			patterns, err := flags.Patterns(cmd, workingdir)
 			if err != nil {
 				return err
@@ -58,8 +62,7 @@ func fetchCmd() *cobra.Command {
 				return fmt.Errorf("didn't match any files with %v", patterns)
 			}
 			fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
-			// TODO: Hash files based of matches
-			hashStr, err := cacheutils.Compute(matches)
+			hashStr, err := cacheutils.Compute(namespace, workingdir, matches)
 			if err != nil {
 				return err
 			}
@@ -80,6 +83,7 @@ func fetchCmd() *cobra.Command {
 	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
 	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
 	cmd.Flags().String(digestFlag, "", "expectedDigest to validate downloaded cache archive")
+	cmd.Flags().String(flags.NamespaceFlag, "", flags.NamespaceUsage)
 	cmd.Flags().Bool(insecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")
 	return cmd
 }
