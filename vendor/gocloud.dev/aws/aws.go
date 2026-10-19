@@ -26,6 +26,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/ratelimit"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 const (
@@ -59,7 +61,7 @@ func parseResponseChecksumValidation(value string) (aws.ResponseChecksumValidati
 	}
 }
 
-// NewDefaultV2Config returns a aws.Config for AWS SDK v2, using the default options.
+// NewDefaultV2Config returns an aws.Config for AWS SDK v2, using the default options.
 func NewDefaultV2Config(ctx context.Context) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx)
 }
@@ -78,6 +80,7 @@ func NewDefaultV2Config(ctx context.Context) (aws.Config, error) {
 //   - region: The AWS region for requests; sets WithRegion.
 //   - anonymous: A value of "true" forces use of anonymous credentials.
 //   - profile: The shared config profile to use; sets SharedConfigProfile.
+//   - role: An IAM role ARN to assume via STS.
 //   - endpoint: The AWS service endpoint to send HTTP request.
 //   - hostname_immutable: Make the hostname immutable, only works if endpoint is also set.
 //   - dualstack: A value of "true" enables dual stack (IPv4 and IPv6) endpoints.
@@ -91,6 +94,7 @@ func V2ConfigFromURLParams(ctx context.Context, q url.Values) (aws.Config, error
 	var endpoint string
 	var hostnameImmutable bool
 	var rateLimitCapacity int64
+	var roleARN string
 	var opts []func(*config.LoadOptions) error
 	for param, values := range q {
 		value := values[0]
@@ -137,6 +141,11 @@ func V2ConfigFromURLParams(ctx context.Context, q url.Values) (aws.Config, error
 			if anon {
 				opts = append(opts, config.WithCredentialsProvider(aws.AnonymousCredentials{}))
 			}
+		case "role":
+			if !strings.HasPrefix(value, "arn:") {
+				return aws.Config{}, fmt.Errorf("invalid value for role: must be a valid ARN (starts with 'arn:'): %s", value)
+			}
+			roleARN = value
 		case requestChecksumCalculationParamKey:
 			value, err := parseRequestChecksumCalculation(value)
 			if err != nil {
@@ -157,17 +166,20 @@ func V2ConfigFromURLParams(ctx context.Context, q url.Values) (aws.Config, error
 			return aws.Config{}, fmt.Errorf("unknown query parameter %q", param)
 		}
 	}
-	if endpoint != "" {
-		customResolver := aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...any) (aws.Endpoint, error) {
-				return aws.Endpoint{
-					PartitionID:       "aws",
-					URL:               endpoint,
-					SigningRegion:     region,
-					HostnameImmutable: hostnameImmutable,
-				}, nil
-			})
-		opts = append(opts, config.WithEndpointResolverWithOptions(customResolver))
+	if roleARN != "" {
+		baseConfig, err := config.LoadDefaultConfig(ctx, opts...)
+		if err != nil {
+			return aws.Config{}, fmt.Errorf("failed to load default AWS config: %w", err)
+		}
+		stsClient := sts.NewFromConfig(baseConfig)
+		provider := stscreds.NewAssumeRoleProvider(stsClient, roleARN)
+		opts = []func(*config.LoadOptions) error{
+			config.WithCredentialsProvider(provider),
+		}
+		if baseConfig.Region == "" {
+			return aws.Config{}, fmt.Errorf("STS client created with empty region: all other parameters must be collected before assuming role")
+		}
+		opts = append(opts, config.WithRegion(baseConfig.Region))
 	}
 
 	var rateLimiter retry.RateLimiter
@@ -181,5 +193,20 @@ func V2ConfigFromURLParams(ctx context.Context, q url.Values) (aws.Config, error
 		})
 	}))
 
-	return config.LoadDefaultConfig(ctx, opts...)
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		return aws.Config{}, err
+	}
+	if endpoint != "" {
+		cfg.EndpointResolverWithOptions = aws.EndpointResolverWithOptionsFunc(
+			func(service, region string, options ...any) (aws.Endpoint, error) {
+				return aws.Endpoint{
+					PartitionID:       "aws",
+					URL:               endpoint,
+					SigningRegion:     region,
+					HostnameImmutable: hostnameImmutable,
+				}, nil
+			})
+	}
+	return cfg, nil
 }

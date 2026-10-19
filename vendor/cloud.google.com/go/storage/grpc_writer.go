@@ -18,10 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	gapic "cloud.google.com/go/storage/internal/apiv2"
@@ -51,6 +53,15 @@ func (w *gRPCWriter) Write(p []byte) (n int, err error) {
 	case <-w.donec:
 		return 0, w.streamResult
 	case w.writesChan <- cmd:
+		md5Provided := w.attrs != nil && w.attrs.MD5 != nil
+		// Update fullObjectChecksum on every write and send it on finalWrite if not disabled.
+		// Skip checksum calculation if user configures MD5 or CRC32C themselves.
+		if !w.disableAutoChecksum &&
+			!w.sendCRC32C &&
+			!md5Provided &&
+			!w.append {
+			w.fullObjectChecksum = crc32.Update(w.fullObjectChecksum, crc32cTable, p)
+		}
 		// write command successfully delivered to sender. We no longer own cmd.
 		break
 	}
@@ -97,6 +108,11 @@ func (w *gRPCWriter) CloseWithError(err error) error {
 	}
 	<-w.donec
 	return nil
+}
+
+func (w *gRPCWriter) setAppendFinalCRC32C(sendAppendFinalCRC32C bool, c uint32) {
+	w.sendAppendFinalCRC32C = sendAppendFinalCRC32C
+	w.appendFinalCRC32C = c
 }
 
 func (c *grpcStorageClient) OpenWriter(params *openWriterParams, opts ...storageOption) (internalWriter, error) {
@@ -170,13 +186,15 @@ func (c *grpcStorageClient) OpenWriter(params *openWriterParams, opts ...storage
 
 		flushSupported:        params.append,
 		sendCRC32C:            params.sendCRC32C,
+		disableAutoChecksum:   params.disableAutoChecksum,
 		forceOneShot:          params.chunkSize <= 0,
 		forceEmptyContentType: params.forceEmptyContentType,
 		append:                params.append,
 		appendGen:             params.appendGen,
 		finalizeOnClose:       params.finalizeOnClose,
 
-		buf:              make([]byte, 0, chunkSize),
+		buf:              nil, // Allocated lazily on first buffered write.
+		chunkSize:        chunkSize,
 		writeQuantum:     writeQuantum,
 		lastSegmentStart: lastSegmentStart,
 		sendableUnits:    sendableUnits,
@@ -209,10 +227,18 @@ func (c *grpcStorageClient) OpenWriter(params *openWriterParams, opts ...storage
 		}
 		w.streamSender = w.pickBufferSender()
 
+		// Writer does not use maxRetryDuration from retryConfig to maintain
+		// consistency with HTTP client behavior. Writers should use
+		// ChunkRetryDeadline for per-chunk timeouts and context for overall timeouts.
+		writerRetry := w.settings.retry
+		if writerRetry != nil {
+			writerRetry = writerRetry.clone()
+			writerRetry.maxRetryDuration = 0
+		}
 		w.streamResult = checkCanceled(run(w.preRunCtx, func(ctx context.Context) error {
 			w.lastErr = w.writeLoop(ctx)
 			return w.lastErr
-		}, w.settings.retry, w.settings.idempotent))
+		}, writerRetry, w.settings.idempotent, withOperation("WriteObject"), withBucket(w.bucket), withObject(w.attrs.Name)))
 		w.setError(w.streamResult)
 		close(w.donec)
 	}()
@@ -220,7 +246,7 @@ func (c *grpcStorageClient) OpenWriter(params *openWriterParams, opts ...storage
 	return w, nil
 }
 
-// gRPCWriter is a wrapper around the the gRPC client-stream API that manages
+// gRPCWriter is a wrapper around the gRPC client-stream API that manages
 // sending chunks of data provided by the user over the stream.
 type gRPCWriter struct {
 	preRunCtx context.Context
@@ -239,15 +265,21 @@ type gRPCWriter struct {
 	setSize           func(int64)
 	setTakeoverOffset func(int64)
 
+	fullObjectChecksum    uint32
+	appendFinalCRC32C     uint32
+	sendAppendFinalCRC32C bool
+
 	flushSupported        bool
 	sendCRC32C            bool
+	disableAutoChecksum   bool
 	forceOneShot          bool
 	forceEmptyContentType bool
 	append                bool
 	appendGen             int64
 	finalizeOnClose       bool
 
-	buf []byte
+	buf       []byte
+	chunkSize int
 	// A writeQuantum is the largest quantity of data which can be sent to the
 	// service in a single message.
 	writeQuantum     int
@@ -307,6 +339,11 @@ func (w *gRPCWriter) sendBufferToTarget(cs gRPCWriterCommandHandleChans, buf []b
 		if flushAt-sent < w.writeQuantum {
 			q = flushAt - sent
 		}
+
+		if w.chunkRetryDeadline > 0 && w.abandonRetriesTime.IsZero() {
+			w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
+		}
+
 		req := gRPCBidiWriteRequest{
 			buf:    buf[:q],
 			offset: baseOffset + int64(sent),
@@ -319,6 +356,16 @@ func (w *gRPCWriter) sendBufferToTarget(cs gRPCWriterCommandHandleChans, buf []b
 		sent += q
 	}
 	return baseOffset + int64(sent), true
+}
+
+func (w *gRPCWriter) isActive() bool {
+	hasUnackedData := w.bufUnsentIdx > 0 && w.bufUnsentIdx > w.bufFlushedIdx
+	unsentBytes := len(w.buf) - w.bufUnsentIdx
+	if unsentBytes < 0 {
+		unsentBytes = 0
+	}
+	hasReadyData := unsentBytes >= w.writeQuantum
+	return w.currentCommand != nil || hasUnackedData || hasReadyData || len(w.writesChan) > 0
 }
 
 func (w *gRPCWriter) handleCompletion(c gRPCBidiWriteCompletion) {
@@ -339,17 +386,18 @@ func (w *gRPCWriter) handleCompletion(c gRPCBidiWriteCompletion) {
 		w.bufFlushedIdx = 0
 		w.buf = w.buf[:0]
 	}
+
+	// We made forward progress on the network! Reset the retry stopwatch.
+	w.abandonRetriesTime = time.Time{}
+	w.attempts = 0
+
 	w.setSize(c.flushOffset)
 	w.progress(c.flushOffset)
-}
 
-func (w *gRPCWriter) withCommandRetryDeadline(f func() error) error {
-	w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
-	err := f()
-	if err == nil {
-		w.abandonRetriesTime = time.Time{}
+	// Restart the stopwatch if there is still more data waiting to be sent.
+	if w.chunkRetryDeadline > 0 && w.isActive() {
+		w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
 	}
-	return err
 }
 
 // Gather write commands before starting the actual write. Returns nil if the
@@ -364,21 +412,26 @@ func (w *gRPCWriter) gatherFirstBuffer() error {
 	for cmd := range w.writesChan {
 		switch v := cmd.(type) {
 		case *gRPCWriterCommandWrite:
-			if len(w.buf)+len(v.p) <= cap(w.buf) {
-				// We have not started sending yet, and we can stage all data without
-				// starting a send. Compare against cap(w.buf) instead of
-				// w.writeQuantum: that way we can perform a oneshot upload for objects
-				// which fit in one chunk, even though we will cut the request into
-				// w.writeQuantum units when we do start sending.
-				origLen := len(w.buf)
-				w.buf = w.buf[:origLen+len(v.p)]
-				copy(w.buf[origLen:], v.p)
-				close(v.done)
-			} else {
-				// Too large. Handle it in writeLoop.
+			// If zero-copy one-shot is requested, OR the payload is larger than the buffer,
+			// bypass buffering entirely and hand off to the writeLoop immediately.
+			if w.forceOneShot || len(w.buf)+len(v.p) > w.chunkSize {
 				w.currentCommand = cmd
 				return nil
 			}
+
+			// Otherwise, lazily allocate and stage the small write (normal buffered path)
+			if w.buf == nil {
+				w.buf = make([]byte, 0, w.chunkSize)
+			}
+			// We have not started sending yet, and we can stage all data without
+			// starting a send. Compare against w.chunkSize instead of
+			// w.writeQuantum: that way we can perform a oneshot upload for objects
+			// which fit in one chunk, even though we will cut the request into
+			// w.writeQuantum units when we do start sending.
+			origLen := len(w.buf)
+			w.buf = w.buf[:origLen+len(v.p)]
+			copy(w.buf[origLen:], v.p)
+			close(v.done)
 			break
 		case *gRPCWriterCommandClose:
 			// If we get here, data (if any) fits in w.buf, so we can force oneshot.
@@ -398,9 +451,18 @@ func (w *gRPCWriter) gatherFirstBuffer() error {
 
 func (w *gRPCWriter) writeLoop(ctx context.Context) error {
 	w.attempts++
-	// Return an error if we've been waiting for a single operation for too long.
-	if !w.abandonRetriesTime.IsZero() && time.Now().After(w.abandonRetriesTime) {
-		return fmt.Errorf("storage: retry deadline of %s reached after %v attempts; last error: %w", w.chunkRetryDeadline, w.attempts, w.lastErr)
+	if w.chunkRetryDeadline > 0 {
+		if w.isActive() {
+			if w.abandonRetriesTime.IsZero() {
+				w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
+			}
+			// Return an error if we've been waiting for a single operation for too long.
+			if time.Now().After(w.abandonRetriesTime) {
+				return fmt.Errorf("storage: retry deadline of %s reached after %v attempts; last error: %v", w.chunkRetryDeadline, w.attempts, w.lastErr)
+			}
+		} else {
+			w.abandonRetriesTime = time.Time{}
+		}
 	}
 	// Allow each request in w.buf to be sent and result in a completion without
 	// blocking.
@@ -414,34 +476,56 @@ func (w *gRPCWriter) writeLoop(ctx context.Context) error {
 	defer cancel()
 	w.streamSender.connect(ctx, bscs, w.settings.gax...)
 
-	// Send any full quantum in w.buf, possibly including a flush
-	if err := w.withCommandRetryDeadline(func() error {
-		sentOffset, ok := w.sendBufferToTarget(chcs, w.buf, w.bufBaseOffset, cap(w.buf),
-			w.handleCompletion)
-		if !ok {
-			return w.streamSender.err()
+	// Drain any initial completions (like QueryWriteStatus results).
+Loop:
+	for {
+		select {
+		case c, ok := <-completions:
+			if !ok {
+				return w.streamSender.err()
+			}
+			w.handleCompletion(c)
+		default:
+			break Loop
 		}
-		w.bufUnsentIdx = int(sentOffset - w.bufBaseOffset)
-		// We may have observed a completion that is after all of w.buf if we also
-		// have a write command in w.currentCommand which sent a flush, but failed
-		// before the completion could be delivered.
+	}
+
+	if w.bufFlushedIdx > 0 {
+		copy(w.buf, w.buf[w.bufFlushedIdx:])
+		w.buf = w.buf[:len(w.buf)-w.bufFlushedIdx]
+		w.bufBaseOffset += int64(w.bufFlushedIdx)
+		w.bufUnsentIdx -= w.bufFlushedIdx
 		if w.bufUnsentIdx < 0 {
 			w.bufUnsentIdx = 0
 		}
-		return nil
-	}); err != nil {
-		return err
+		w.bufFlushedIdx = -1
+	}
+
+	// Send any full quantum in w.buf, possibly including a flush
+	sentOffset, ok := w.sendBufferToTarget(chcs, w.buf, w.bufBaseOffset, cap(w.buf),
+		w.handleCompletion)
+	if !ok {
+		return w.streamSender.err()
+	}
+	w.bufUnsentIdx = int(sentOffset - w.bufBaseOffset)
+	// We may have observed a completion that is after all of w.buf if we also
+	// have a write command in w.currentCommand which sent a flush, but failed
+	// before the completion could be delivered.
+	if w.bufUnsentIdx < 0 {
+		w.bufUnsentIdx = 0
 	}
 
 	err := func() error {
 		for {
 			if w.currentCommand != nil {
-				if err := w.withCommandRetryDeadline(func() error {
-					return w.currentCommand.handle(w, chcs)
-				}); err != nil {
+				if err := w.currentCommand.handle(w, chcs); err != nil {
 					return err
 				}
 				w.currentCommand = nil
+				// Pause the stopwatch if we are completely idle and waiting for the user's next Write() call.
+				if w.chunkRetryDeadline > 0 && !w.isActive() {
+					w.abandonRetriesTime = time.Time{}
+				}
 			}
 			select {
 			case c, ok := <-completions:
@@ -469,19 +553,18 @@ func (w *gRPCWriter) writeLoop(ctx context.Context) error {
 
 	if closeErr.err == nil {
 		// Clean shutdown. Send any remaining tail.
+		if w.chunkRetryDeadline > 0 && w.abandonRetriesTime.IsZero() {
+			w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
+		}
+
 		req := gRPCBidiWriteRequest{
 			buf:         w.buf[w.bufUnsentIdx:],
 			offset:      w.bufBaseOffset + int64(w.bufUnsentIdx),
 			flush:       true,
 			finishWrite: true,
 		}
-		if err := w.withCommandRetryDeadline(func() error {
-			if !chcs.deliverRequestUnlessCompleted(req, w.handleCompletion) {
-				return w.streamSender.err()
-			}
-			return nil
-		}); err != nil {
-			return err
+		if !chcs.deliverRequestUnlessCompleted(req, w.handleCompletion) {
+			return w.streamSender.err()
 		}
 	} else {
 		// Unclean shutdown. Cancel the context so we clean up expeditiously.
@@ -548,17 +631,53 @@ type gRPCWriterCommand interface {
 }
 
 type gRPCWriterCommandWrite struct {
-	p    []byte
-	done chan struct{}
+	p             []byte
+	done          chan struct{}
+	initialOffset int64
+	hasStarted    bool
+	closeOnce     sync.Once
 }
 
 func (c *gRPCWriterCommandWrite) handle(w *gRPCWriter, cs gRPCWriterCommandHandleChans) error {
 	if len(c.p) == 0 {
 		// No data to write.
-		close(c.done)
+		c.markDone()
 		return nil
 	}
 
+	if !c.hasStarted {
+		c.initialOffset = w.bufBaseOffset + int64(len(w.buf))
+		c.hasStarted = true
+	} else {
+		// Retrying this command; check if server has persisted some bytes of this command's payload.
+		bytesPersisted := w.bufBaseOffset - c.initialOffset
+		if bytesPersisted > 0 {
+			if int64(len(c.p)) < bytesPersisted {
+				bytesPersisted = int64(len(c.p))
+			}
+			c.p = c.p[bytesPersisted:]
+			c.initialOffset = w.bufBaseOffset
+
+			if len(c.p) == 0 {
+				c.markDone()
+				return nil
+			}
+		}
+	}
+
+	// Zero-Copy send.
+	if w.forceOneShot {
+		err := c.zeroCopyWrite(w, cs)
+		if err != nil {
+			return err
+		}
+		// If zeroCopyWrite returns without error, the write is done.
+		return nil
+	}
+
+	if w.buf == nil {
+		w.buf = make([]byte, 0, w.chunkSize)
+	}
 	wblen := len(w.buf)
 	allKnownBytes := wblen + len(c.p)
 	fullBufs := allKnownBytes / cap(w.buf)
@@ -585,7 +704,7 @@ func (c *gRPCWriterCommandWrite) handle(w *gRPCWriter, cs gRPCWriterCommandHandl
 			return w.streamSender.err()
 		}
 		w.bufUnsentIdx = int(sentOffset - w.bufBaseOffset)
-		close(c.done)
+		c.markDone()
 		return nil
 	}
 
@@ -605,6 +724,7 @@ func (c *gRPCWriterCommandWrite) handle(w *gRPCWriter, cs gRPCWriterCommandHandl
 	w.buf = w.buf[:wblen+toNextWriteQuantum]
 	copied := copy(w.buf[wblen:], c.p)
 	c.p = c.p[copied:]
+	c.initialOffset += int64(copied)
 	firstFullBufFromCmd := cap(w.buf) - len(w.buf)
 
 	sending := w.buf[w.bufUnsentIdx:]
@@ -629,6 +749,7 @@ func (c *gRPCWriterCommandWrite) handle(w *gRPCWriter, cs gRPCWriterCommandHandl
 			trim = len(c.p)
 		}
 		c.p = c.p[trim:]
+		c.initialOffset += int64(trim)
 		cmdBaseOffset = bufTail
 	}
 	offset := cmdBaseOffset
@@ -678,8 +799,51 @@ func (c *gRPCWriterCommandWrite) handle(w *gRPCWriter, cs gRPCWriterCommandHandl
 	w.buf = w.buf[:len(toCopyIn)]
 	copy(w.buf, toCopyIn)
 	w.bufUnsentIdx = int(sentOffset - w.bufBaseOffset)
-	close(c.done)
+	c.markDone()
 	return nil
+}
+
+func (c *gRPCWriterCommandWrite) zeroCopyWrite(w *gRPCWriter, cs gRPCWriterCommandHandleChans) error {
+	// Pre-emptively get the context channel to avoid closure overhead in the loop.
+	ctxDone := w.preRunCtx.Done()
+
+	// sendBufferToTarget handles the quantum breakdown.
+	newOffset, ok := w.sendBufferToTarget(cs, c.p, w.bufBaseOffset, len(c.p), w.handleCompletion)
+	if !ok {
+		return w.streamSender.err()
+	}
+
+	// Request an ack from the sender goroutine to ensure the buffer has been
+	// dispatched to gRPC and is safe for the user to reuse.
+	if !cs.deliverRequestUnlessCompleted(gRPCBidiWriteRequest{requestAck: true}, w.handleCompletion) {
+		return w.streamSender.err()
+	}
+
+	ackOutstanding := true
+
+	// Wait for server acknowledgement and sender transmissions to enable incremental progress.
+	for ackOutstanding || w.bufBaseOffset < newOffset {
+		select {
+		case completion, ok := <-cs.completions:
+			if !ok {
+				return w.streamSender.err()
+			}
+			w.handleCompletion(completion)
+		case <-cs.requestAcks:
+			ackOutstanding = false
+		case <-ctxDone:
+			return w.preRunCtx.Err()
+		}
+	}
+
+	c.p = nil
+	c.markDone()
+	return nil
+}
+
+// Helper to ensure we don't close done twice and keep the main logic clean.
+func (c *gRPCWriterCommandWrite) markDone() {
+	c.closeOnce.Do(func() { close(c.done) })
 }
 
 type gRPCWriterCommandFlush struct {
@@ -691,6 +855,10 @@ func (c *gRPCWriterCommandFlush) handle(w *gRPCWriter, cs gRPCWriterCommandHandl
 	// We know that there are at most w.writeQuantum bytes in
 	// w.buf[w.bufUnsentIdx:], because we send anything more inline when handling
 	// a write.
+	if w.chunkRetryDeadline > 0 && w.abandonRetriesTime.IsZero() {
+		w.abandonRetriesTime = time.Now().Add(w.chunkRetryDeadline)
+	}
+
 	req := gRPCBidiWriteRequest{
 		buf:         w.buf[w.bufUnsentIdx:],
 		offset:      w.bufBaseOffset + int64(w.bufUnsentIdx),
@@ -785,23 +953,75 @@ func completion(r *storagepb.BidiWriteObjectResponse) *gRPCBidiWriteCompletion {
 	}
 }
 
-func bidiWriteObjectRequest(buf []byte, offset int64, flush, finishWrite bool) *storagepb.BidiWriteObjectRequest {
+// Server contract expects full object checksum to be sent only on first or last write.
+// Checksums of full object are already being sent on first Write during initialization of sender.
+// Send objectChecksums only on final request and nil in other cases.
+func bidiWriteObjectRequest(r gRPCBidiWriteRequest, bufChecksum *uint32, objectChecksums *storagepb.ObjectChecksums) *storagepb.BidiWriteObjectRequest {
 	var data *storagepb.BidiWriteObjectRequest_ChecksummedData
-	if buf != nil {
+	if r.buf != nil {
 		data = &storagepb.BidiWriteObjectRequest_ChecksummedData{
 			ChecksummedData: &storagepb.ChecksummedData{
-				Content: buf,
+				Content: r.buf,
+				Crc32C:  bufChecksum,
 			},
 		}
 	}
 	req := &storagepb.BidiWriteObjectRequest{
-		Data:        data,
-		WriteOffset: offset,
-		FinishWrite: finishWrite,
-		Flush:       flush,
-		StateLookup: flush,
+		Data:            data,
+		WriteOffset:     r.offset,
+		FinishWrite:     r.finishWrite,
+		Flush:           r.flush,
+		StateLookup:     r.flush,
+		ObjectChecksums: objectChecksums,
 	}
 	return req
+}
+
+type getObjectChecksumsParams struct {
+	sendCRC32C          bool
+	disableAutoChecksum bool
+	objectAttrs         *ObjectAttrs
+	fullObjectChecksum  func() *uint32
+	finishWrite         bool
+	append              bool
+}
+
+// getObjectChecksums determines what checksum information to include in the final
+// gRPC request
+//
+// function returns a populated ObjectChecksums only when finishWrite is true
+// If CRC32C is disabled, it returns the user-provided checksum if available.
+// If CRC32C is enabled, it returns the user-provided checksum if available,
+// or the computed checksum of the entire object.
+func getObjectChecksums(params *getObjectChecksumsParams) *storagepb.ObjectChecksums {
+	if !params.finishWrite {
+		return nil
+	}
+
+	// For append operations, send user's final append checksum on last write op if available.
+	// Auto checksum is not supported for appendable writes.
+	var crc32c *uint32
+	if params.fullObjectChecksum != nil {
+		crc32c = params.fullObjectChecksum()
+	}
+
+	if params.append && crc32c != nil {
+		return &storagepb.ObjectChecksums{Crc32C: crc32c}
+	}
+
+	// send user's checksum on last write op if available
+	if params.sendCRC32C || (params.objectAttrs != nil && params.objectAttrs.MD5 != nil) {
+		return toProtoChecksums(params.sendCRC32C, params.objectAttrs)
+	}
+
+	if params.append || params.disableAutoChecksum || params.fullObjectChecksum == nil {
+		return nil
+	}
+
+	if crc32c != nil {
+		return &storagepb.ObjectChecksums{Crc32C: crc32c}
+	}
+	return nil
 }
 
 type gRPCBidiWriteBufferSender interface {
@@ -832,6 +1052,12 @@ type gRPCOneshotBidiWriteBufferSender struct {
 	bucket       string
 	firstMessage *storagepb.BidiWriteObjectRequest
 	streamErr    error
+
+	// Checksum related settings.
+	sendCRC32C          bool
+	disableAutoChecksum bool
+	objectAttrs         *ObjectAttrs
+	fullObjectChecksum  func() *uint32
 }
 
 func (w *gRPCWriter) newGRPCOneshotBidiWriteBufferSender() *gRPCOneshotBidiWriteBufferSender {
@@ -843,32 +1069,19 @@ func (w *gRPCWriter) newGRPCOneshotBidiWriteBufferSender() *gRPCOneshotBidiWrite
 				WriteObjectSpec: w.spec,
 			},
 			CommonObjectRequestParams: toProtoCommonObjectRequestParams(w.encryptionKey),
-			// For a non-resumable upload, checksums must be sent in this message.
-			// TODO: Currently the checksums are only sent on the first message
-			// of the stream, but in the future, we must also support sending it
-			// on the *last* message of the stream (instead of the first).
-			ObjectChecksums: toProtoChecksums(w.sendCRC32C, w.attrs),
+			ObjectChecksums:           toProtoChecksums(w.sendCRC32C, w.attrs),
+		},
+		sendCRC32C:          w.sendCRC32C,
+		disableAutoChecksum: w.disableAutoChecksum,
+		objectAttrs:         w.attrs,
+		fullObjectChecksum: func() *uint32 {
+			checksum := w.fullObjectChecksum
+			return &checksum
 		},
 	}
 }
 
 func (s *gRPCOneshotBidiWriteBufferSender) err() error { return s.streamErr }
-
-// drainInboundStream calls stream.Recv() repeatedly until an error is returned.
-// It returns the last Resource received on the stream, or nil if no Resource
-// was returned. drainInboundStream always returns a non-nil error. io.EOF
-// indicates all messages were successfully read.
-func drainInboundStream(stream storagepb.Storage_BidiWriteObjectClient) (object *storagepb.Object, err error) {
-	for err == nil {
-		var resp *storagepb.BidiWriteObjectResponse
-		resp, err = stream.Recv()
-		// GetResource() returns nil on a nil response
-		if resp.GetResource() != nil {
-			object = resp.GetResource()
-		}
-	}
-	return object, err
-}
 
 func (s *gRPCOneshotBidiWriteBufferSender) connect(ctx context.Context, cs gRPCBufSenderChans, opts ...gax.CallOption) {
 	s.streamErr = nil
@@ -881,47 +1094,93 @@ func (s *gRPCOneshotBidiWriteBufferSender) connect(ctx context.Context, cs gRPCB
 	}
 
 	go func() {
-		firstSend := true
-		for r := range cs.requests {
-			if r.requestAck {
-				cs.requestAcks <- struct{}{}
-				continue
-			}
+		var sendErr, recvErr error
+		sendDone := make(chan struct{})
+		recvDone := make(chan struct{})
 
-			req := bidiWriteObjectRequest(r.buf, r.offset, r.flush, r.finishWrite)
-			if firstSend {
-				proto.Merge(req, s.firstMessage)
-				firstSend = false
-			}
+		go func() {
+			sendErr = func() error {
+				firstSend := true
+				for {
+					select {
+					case <-recvDone:
+						// Because `requests` is not connected to the gRPC machinery, we
+						// have to check for asynchronous termination on the receive side.
+						return nil
+					case r, ok := <-cs.requests:
+						if !ok {
+							stream.CloseSend()
+							return nil
+						}
+						if r.requestAck {
+							cs.requestAcks <- struct{}{}
+							continue
+						}
 
-			if err := stream.Send(req); err != nil {
-				_, s.streamErr = drainInboundStream(stream)
-				if err != io.EOF {
-					s.streamErr = err
+						var bufChecksum *uint32
+						if !s.disableAutoChecksum {
+							bufChecksum = proto.Uint32(crc32.Checksum(r.buf, crc32cTable))
+						}
+						objectChecksums := getObjectChecksums(&getObjectChecksumsParams{
+							sendCRC32C:          s.sendCRC32C,
+							objectAttrs:         s.objectAttrs,
+							fullObjectChecksum:  s.fullObjectChecksum,
+							disableAutoChecksum: s.disableAutoChecksum,
+							finishWrite:         r.finishWrite,
+						})
+						req := bidiWriteObjectRequest(r, bufChecksum, objectChecksums)
+
+						if firstSend {
+							proto.Merge(req, s.firstMessage)
+							firstSend = false
+						}
+
+						if err := stream.Send(req); err != nil {
+							return err
+						}
+
+						if r.finishWrite {
+							stream.CloseSend()
+							return nil
+						}
+
+						// Oneshot uploads assume all flushes succeed.
+						if r.flush {
+							select {
+							case cs.completions <- gRPCBidiWriteCompletion{flushOffset: r.offset + int64(len(r.buf))}:
+							case <-stream.Context().Done():
+								return stream.Context().Err()
+							}
+						}
+					}
 				}
-				close(cs.completions)
-				return
-			}
+			}()
+			close(sendDone)
+		}()
 
-			if r.finishWrite {
-				stream.CloseSend()
-				// Oneshot uploads only read from the response stream on completion or
-				// failure
-				obj, err := drainInboundStream(stream)
-				if obj == nil || err != io.EOF {
-					s.streamErr = err
-				} else {
-					cs.completions <- gRPCBidiWriteCompletion{flushOffset: obj.GetSize(), resource: obj}
+		go func() {
+			recvErr = func() error {
+				for {
+					resp, err := stream.Recv()
+					if err != nil {
+						return err
+					}
+					if c := completion(resp); c != nil {
+						select {
+						case cs.completions <- *c:
+						case <-stream.Context().Done():
+							return stream.Context().Err()
+						}
+					}
 				}
-				close(cs.completions)
-				return
-			}
+			}()
+			close(recvDone)
+		}()
 
-			// Oneshot uploads assume all flushes succeed
-			if r.flush {
-				cs.completions <- gRPCBidiWriteCompletion{flushOffset: r.offset + int64(len(r.buf))}
-			}
-		}
+		<-sendDone
+		<-recvDone
+		s.streamErr = pickStreamError(recvErr, sendErr)
+		close(cs.completions)
 	}()
 }
 
@@ -931,6 +1190,12 @@ type gRPCResumableBidiWriteBufferSender struct {
 
 	startWriteRequest *storagepb.StartResumableWriteRequest
 	upid              string
+
+	// Checksum related settings.
+	sendCRC32C          bool
+	disableAutoChecksum bool
+	objectAttrs         *ObjectAttrs
+	fullObjectChecksum  func() *uint32
 
 	streamErr error
 }
@@ -942,10 +1207,14 @@ func (w *gRPCWriter) newGRPCResumableBidiWriteBufferSender() *gRPCResumableBidiW
 		startWriteRequest: &storagepb.StartResumableWriteRequest{
 			WriteObjectSpec:           w.spec,
 			CommonObjectRequestParams: toProtoCommonObjectRequestParams(w.encryptionKey),
-			// TODO: Currently the checksums are only sent on the request to initialize
-			// the upload, but in the future, we must also support sending it
-			// on the *last* message of the stream.
-			ObjectChecksums: toProtoChecksums(w.sendCRC32C, w.attrs),
+			ObjectChecksums:           toProtoChecksums(w.sendCRC32C, w.attrs),
+		},
+		sendCRC32C:          w.sendCRC32C,
+		disableAutoChecksum: w.disableAutoChecksum,
+		objectAttrs:         w.attrs,
+		fullObjectChecksum: func() *uint32 {
+			checksum := w.fullObjectChecksum
+			return &checksum
 		},
 	}
 }
@@ -1005,7 +1274,20 @@ func (s *gRPCResumableBidiWriteBufferSender) connect(ctx context.Context, cs gRP
 							cs.requestAcks <- struct{}{}
 							continue
 						}
-						req := bidiWriteObjectRequest(r.buf, r.offset, r.flush, r.finishWrite)
+
+						var bufChecksum *uint32
+						if !s.disableAutoChecksum {
+							bufChecksum = proto.Uint32(crc32.Checksum(r.buf, crc32cTable))
+						}
+						objectChecksums := getObjectChecksums(&getObjectChecksumsParams{
+							sendCRC32C:          s.sendCRC32C,
+							objectAttrs:         s.objectAttrs,
+							fullObjectChecksum:  s.fullObjectChecksum,
+							disableAutoChecksum: s.disableAutoChecksum,
+							finishWrite:         r.finishWrite,
+						})
+						req := bidiWriteObjectRequest(r, bufChecksum, objectChecksums)
+
 						if firstSend {
 							req.FirstMessage = &storagepb.BidiWriteObjectRequest_UploadId{UploadId: s.upid}
 							firstSend = false
@@ -1031,7 +1313,11 @@ func (s *gRPCResumableBidiWriteBufferSender) connect(ctx context.Context, cs gRP
 						return err
 					}
 					if c := completion(resp); c != nil {
-						cs.completions <- *c
+						select {
+						case cs.completions <- *c:
+						case <-stream.Context().Done():
+							return stream.Context().Err()
+						}
 					}
 				}
 			}()
@@ -1040,15 +1326,7 @@ func (s *gRPCResumableBidiWriteBufferSender) connect(ctx context.Context, cs gRP
 
 		<-sendDone
 		<-recvDone
-		// Prefer recvErr since that's where RPC errors are delivered
-		if recvErr != nil {
-			s.streamErr = recvErr
-		} else if sendErr != nil {
-			s.streamErr = sendErr
-		}
-		if s.streamErr == io.EOF {
-			s.streamErr = nil
-		}
+		s.streamErr = pickStreamError(recvErr, sendErr)
 		close(cs.completions)
 	}()
 }
@@ -1058,11 +1336,17 @@ type gRPCAppendBidiWriteBufferSender struct {
 	bucket       string
 	routingToken *string
 
-	firstMessage *storagepb.BidiWriteObjectRequest
-
-	objectChecksums *storagepb.ObjectChecksums
+	firstMessage    *storagepb.BidiWriteObjectRequest
 	finalizeOnClose bool
 	objResource     *storagepb.Object
+
+	// Checksum related settings.
+	sendCRC32C          bool
+	disableAutoChecksum bool
+	objectAttrs         *ObjectAttrs
+	fullObjectChecksum  func() *uint32
+
+	takeoverWriter bool
 
 	streamErr error
 }
@@ -1080,8 +1364,17 @@ func (w *gRPCWriter) newGRPCAppendableObjectBufferSender() *gRPCAppendBidiWriteB
 			},
 			CommonObjectRequestParams: toProtoCommonObjectRequestParams(w.encryptionKey),
 		},
-		objectChecksums: toProtoChecksums(w.sendCRC32C, w.attrs),
-		finalizeOnClose: w.finalizeOnClose,
+		finalizeOnClose:     w.finalizeOnClose,
+		sendCRC32C:          w.sendCRC32C,
+		disableAutoChecksum: w.disableAutoChecksum,
+		objectAttrs:         w.attrs,
+		fullObjectChecksum: func() *uint32 {
+			if !w.sendAppendFinalCRC32C {
+				return nil
+			}
+			checksum := w.appendFinalCRC32C
+			return &checksum
+		},
 	}
 }
 
@@ -1146,7 +1439,11 @@ func (s *gRPCAppendBidiWriteBufferSender) handleStream(stream storagepb.Storage_
 				s.maybeUpdateFirstMessage(resp)
 
 				if c := completion(resp); c != nil {
-					cs.completions <- *c
+					select {
+					case cs.completions <- *c:
+					case <-stream.Context().Done():
+						return stream.Context().Err()
+					}
 				}
 			}
 		}()
@@ -1155,15 +1452,7 @@ func (s *gRPCAppendBidiWriteBufferSender) handleStream(stream storagepb.Storage_
 
 	<-sendDone
 	<-recvDone
-	// Prefer recvErr since that's where RPC errors are delivered
-	if recvErr != nil {
-		s.streamErr = recvErr
-	} else if sendErr != nil {
-		s.streamErr = sendErr
-	}
-	if s.streamErr == io.EOF {
-		s.streamErr = nil
-	}
+	s.streamErr = pickStreamError(recvErr, sendErr)
 	close(cs.completions)
 }
 
@@ -1194,8 +1483,18 @@ func (w *gRPCWriter) newGRPCAppendTakeoverWriteBufferSender() *gRPCAppendTakeove
 					AppendObjectSpec: writeObjectSpecAsAppendObjectSpec(w.spec, w.appendGen),
 				},
 			},
-			objectChecksums: toProtoChecksums(w.sendCRC32C, w.attrs),
-			finalizeOnClose: w.finalizeOnClose,
+			finalizeOnClose:     w.finalizeOnClose,
+			takeoverWriter:      true,
+			sendCRC32C:          w.sendCRC32C,
+			disableAutoChecksum: w.disableAutoChecksum,
+			objectAttrs:         w.attrs,
+			fullObjectChecksum: func() *uint32 {
+				if !w.sendAppendFinalCRC32C {
+					return nil
+				}
+				checksum := w.appendFinalCRC32C
+				return &checksum
+			},
 		},
 		takeoverReported: false,
 		handleTakeoverCompletion: func(c gRPCBidiWriteCompletion) {
@@ -1319,11 +1618,26 @@ func (s *gRPCAppendBidiWriteBufferSender) maybeHandleRedirectionError(err error)
 func (s *gRPCAppendBidiWriteBufferSender) send(stream storagepb.Storage_BidiWriteObjectClient, buf []byte, offset int64, flush, finishWrite, sendFirstMessage bool) error {
 	finalizeObject := finishWrite && s.finalizeOnClose
 	flush = flush || finishWrite
-	req := bidiWriteObjectRequest(buf, offset, flush, finalizeObject)
-	if finalizeObject {
-		// appendable objects pass checksums on the finalize message only
-		req.ObjectChecksums = s.objectChecksums
+	r := gRPCBidiWriteRequest{
+		buf:         buf,
+		offset:      offset,
+		flush:       flush,
+		finishWrite: finalizeObject,
 	}
+
+	var bufChecksum *uint32
+	if !s.disableAutoChecksum {
+		bufChecksum = proto.Uint32(crc32.Checksum(r.buf, crc32cTable))
+	}
+	objectChecksums := getObjectChecksums(&getObjectChecksumsParams{
+		sendCRC32C:          s.sendCRC32C,
+		objectAttrs:         s.objectAttrs,
+		fullObjectChecksum:  s.fullObjectChecksum,
+		disableAutoChecksum: s.disableAutoChecksum,
+		finishWrite:         finalizeObject,
+		append:              true,
+	})
+	req := bidiWriteObjectRequest(r, bufChecksum, objectChecksums)
 	if sendFirstMessage {
 		proto.Merge(req, s.firstMessage)
 	}
@@ -1394,18 +1708,27 @@ func withBidiWriteObjectRedirectionErrorRetries(s *settings) (newr *retryConfig)
 		// not contain a handle and are "affirmative failures" which indicate that
 		// no server-side action occurred.
 		newr.policy = RetryAlways
-		newr.shouldRetry = func(err error) bool {
+		newr.shouldRetry = func(err error, retryCtx *RetryContext) bool {
 			return errors.Is(err, bidiWriteObjectRedirectionError{})
 		}
 		return newr
 	}
 	// If retry settings allow retries normally, fall back to that behavior.
-	newr.shouldRetry = func(err error) bool {
+	newr.shouldRetry = func(err error, retryCtx *RetryContext) bool {
 		if errors.Is(err, bidiWriteObjectRedirectionError{}) {
 			return true
 		}
-		v := oldr.runShouldRetry(err)
+		v := oldr.runShouldRetry(err, nil)
 		return v
 	}
 	return newr
+}
+
+// pickStreamError determines the final error to be reported by prioritizing recvErr.
+// An io.EOF from a receiver is not considered an error.
+func pickStreamError(recvErr, sendErr error) error {
+	if recvErr != nil && recvErr != io.EOF {
+		return recvErr
+	}
+	return sendErr
 }
