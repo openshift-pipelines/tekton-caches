@@ -24,14 +24,65 @@ import (
 )
 
 const (
-	cacheFile = "cache.tar.gz"
+	cacheFile             = "cache.tar.gz"
+	EnvBlobQueryParamsKey = "BLOB_QUERY_PARAMS"
 )
 
 var (
-	queryParams string
-	openBucket  = func(ctx context.Context, urlString string) (*blob.Bucket, error) {
-		bucket, err := blob.OpenBucket(ctx, urlString+queryParams)
-		return bucket, err
+	// allowedParams maps the lower cased parameter name to the spelling expected by
+	// the blob driver, any other parameter is rejected.
+	allowedParams = map[string]string{
+		// S3 (gocloud.dev/blob/s3blob and gocloud.dev/aws).
+		"region":           "region",
+		"s3forcepathstyle": "use_path_style",
+		"accelerate":       "accelerate",
+		"fips":             "fips",
+		"ssetype":          "ssetype",
+		"use_path_style":   "use_path_style",
+		// GCS (gocloud.dev/blob/gcsblob). "private_key_path" and
+		// "universe_domain" are deliberately left out: the former reads an
+		// arbitrary file from the local filesystem and the latter redirects the
+		// client to another GCP universe, both of which are only useful for
+		// SignedURL/sovereign clouds and neither of which this cache needs.
+		"anonymous": "anonymous",
+		"access_id": "access_id",
+	}
+
+	bucketURL = func(urlString string) (*url.URL, error) {
+		u, err := url.Parse(urlString)
+		if err != nil {
+			return nil, err
+		}
+
+		// Merge the parameters coming from the environment into the ones already
+		// present in the URL, then sanitize the whole set so that parameters coming
+		// from the URL are validated as well.
+		q := u.Query()
+		rawQuery := strings.TrimLeft(os.Getenv(EnvBlobQueryParamsKey), "?&")
+		queryParams, err := url.ParseQuery(rawQuery)
+		if err != nil {
+			return nil, fmt.Errorf("invalid query parameters: %w", err)
+		}
+		for k, vs := range queryParams {
+			for _, v := range vs {
+				q.Add(k, v)
+			}
+		}
+
+		sanitizedQueryParams, err := sanitizeQueryParams(q)
+		if err != nil {
+			return nil, err
+		}
+		u.RawQuery = sanitizedQueryParams.Encode()
+		return u, nil
+	}
+
+	openBucket = func(ctx context.Context, urlString string) (*blob.Bucket, error) {
+		u, err := bucketURL(urlString)
+		if err != nil {
+			return nil, err
+		}
+		return blob.OpenBucket(ctx, u.String())
 	}
 	clean = func(bucket *blob.Bucket) {
 		err := bucket.Close()
@@ -41,9 +92,26 @@ var (
 	}
 )
 
-//nolint:gochecknoinits
-func init() {
-	queryParams = os.Getenv("BLOB_QUERY_PARAMS")
+// sanitizeQueryParams validates every query parameter, whatever its origin (the
+// cache URL itself or the BLOB_QUERY_PARAMS environment variable), against the
+// allowed list and normalizes the keys to the spelling the driver expects.
+func sanitizeQueryParams(values url.Values) (url.Values, error) {
+	sanitizedValues := url.Values{}
+	for key, paramValues := range values {
+		// Only retain parameters that are explicitly allowed.
+		canonicalKey, ok := allowedParams[strings.ToLower(key)]
+		if !ok {
+			return nil, fmt.Errorf("security policy violation: parameter %q is not from allowed list", key)
+		}
+		if len(paramValues) != 1 {
+			return nil, fmt.Errorf("security policy violation: parameter %q must be specified exactly once", canonicalKey)
+		}
+		if _, exists := sanitizedValues[canonicalKey]; exists {
+			return nil, fmt.Errorf("security policy violation: parameter %q must be specified exactly once", canonicalKey)
+		}
+		sanitizedValues.Set(canonicalKey, paramValues[0])
+	}
+	return sanitizedValues, nil
 }
 
 // sanitizeLog strips newline/carriage-return characters from s to prevent log injection.

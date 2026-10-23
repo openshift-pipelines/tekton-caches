@@ -8,7 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var PatternsFlag = "pattern"
+var (
+	PatternsFlag  = "pattern"
+	NamespaceFlag = "namespace"
+)
+
+// NamespaceUsage is the help text of the --namespace flag, shared by the fetch
+// and upload commands.
+const NamespaceUsage = "Namespace scope mixed into the cache key. Use the same non-empty value for intentional sharing. Backend authorization is still required"
 
 func Patterns(cmd *cobra.Command, workingdir string) ([]string, error) {
 	patterns, err := cmd.Flags().GetStringArray(PatternsFlag)

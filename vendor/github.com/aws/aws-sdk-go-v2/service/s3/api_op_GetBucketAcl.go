@@ -4,27 +4,13 @@ package s3
 
 import (
 	"context"
-	"fmt"
-	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	s3cust "github.com/aws/aws-sdk-go-v2/service/s3/internal/customizations"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go/middleware"
 	"github.com/aws/smithy-go/ptr"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// End of support notice: Beginning November 21, 2025, Amazon S3 will stop
-// returning DisplayName . Update your applications to use canonical IDs (unique
-// identifier for Amazon Web Services accounts), Amazon Web Services account ID (12
-// digit identifier) or IAM ARNs (full resource naming) as a direct replacement of
-// DisplayName .
-//
-// This change affects the following Amazon Web Services Regions: US East (N.
-// Virginia) Region, US West (N. California) Region, US West (Oregon) Region, Asia
-// Pacific (Singapore) Region, Asia Pacific (Sydney) Region, Asia Pacific (Tokyo)
-// Region, Europe (Ireland) Region, and South America (São Paulo) Region.
-//
 // This operation is not supported for directory buckets.
 //
 // This implementation of the GET action uses the acl subresource to return the
@@ -110,7 +96,7 @@ type GetBucketAclOutput struct {
 	// A list of grants.
 	Grants []types.Grant
 
-	// Container for the bucket owner's display name and ID.
+	// Container for the bucket owner's ID.
 	Owner *types.Owner
 
 	// Metadata pertaining to the operation's result.
@@ -120,9 +106,6 @@ type GetBucketAclOutput struct {
 }
 
 func (c *Client) addOperationGetBucketAclMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsRestxml_serializeOpGetBucketAcl{}, middleware.After)
 	if err != nil {
 		return err
@@ -131,59 +114,17 @@ func (c *Client) addOperationGetBucketAclMiddlewares(stack *middleware.Stack, op
 	if err != nil {
 		return err
 	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "GetBucketAcl"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
 
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
-		return err
-	}
-	if err = addSetLoggerMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addClientRequestID(stack); err != nil {
-		return err
-	}
-	if err = addComputeContentLength(stack); err != nil {
-		return err
-	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
 	if err = addComputePayloadSHA256(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
-		return err
-	}
-	if err = addRawResponseToMetadata(stack); err != nil {
-		return err
-	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addClientUserAgent(stack, options); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
+	if err = addRecordResponseTiming(stack, options); err != nil {
 		return err
 	}
 	if err = addPutBucketContextMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
 	if err = addIsExpressUserAgent(stack); err != nil {
@@ -195,13 +136,7 @@ func (c *Client) addOperationGetBucketAclMiddlewares(stack *middleware.Stack, op
 	if err = addOpGetBucketAclValidationMiddleware(stack); err != nil {
 		return err
 	}
-	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGetBucketAcl(options.Region), middleware.Before); err != nil {
-		return err
-	}
 	if err = addMetadataRetrieverMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addGetBucketAclUpdateEndpoint(stack, options); err != nil {
@@ -225,12 +160,6 @@ func (c *Client) addOperationGetBucketAclMiddlewares(stack *middleware.Stack, op
 	if err = addSerializeImmutableHostnameBucketMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAttempt(stack, options); err != nil {
-		return err
-	}
 	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
@@ -242,14 +171,6 @@ func (v *GetBucketAclInput) bucket() (string, bool) {
 		return "", false
 	}
 	return *v.Bucket, true
-}
-
-func newServiceMetadataMiddleware_opGetBucketAcl(region string) *awsmiddleware.RegisterServiceMetadata {
-	return &awsmiddleware.RegisterServiceMetadata{
-		Region:        region,
-		ServiceID:     ServiceID,
-		OperationName: "GetBucketAcl",
-	}
 }
 
 // getGetBucketAclBucketMember returns a pointer to string denoting a provided
