@@ -1,0 +1,29 @@
+---
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Define the version you want to release'
+        required: true
+        default: '0.4.0'
+  schedule:
+    - cron: "0 10 * * 4"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: github-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make RELEASE_VERSION=v${{github.event.inputs.version}} github-release
