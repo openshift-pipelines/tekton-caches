@@ -9,6 +9,7 @@ shopt -s inherit_errexit
 set -eu -o pipefail
 
 readonly RELEASE_DIR="${1:-}"
+export IMG=${IMG:-quay.io/openshift-pipeline/pipelines-cache-rhel9:next}
 
 # Print error message and exit non-successfully.
 panic() {
@@ -46,7 +47,7 @@ release() {
 #    release_templates "task" "templates/task-*.yaml" "tasks"
 
     # Release StepAction templates
-    release_templates "stepaction" "tekton/*.yaml" "stepactions"
+    release_templates "stepaction" "tekton/cache*.yaml" "stepactions"
 }
 
 release_templates() {
@@ -60,10 +61,8 @@ release_templates() {
           [[ -z "${name}" ]] &&
               panic "Unable to extract name from '${t}'!"
 
-#        local doc=$(find_doc ${name})
-#        [[ -z "${doc}" ]] &&
-#            panic "Unable to find documentation file for '${name}'!"
-
+        echo "Updating Image to $IMG in $t"
+        yq -i '.spec.image = env(IMG)' "$t"
         local dir="${RELEASE_DIR}/${release_subdir}/${name}"
           [[ ! -d "${dir}" ]] &&
               mkdir -p "${dir}"
@@ -73,13 +72,6 @@ release_templates() {
         echo "# Rendering '${name}' at '${dir}'..."
        cp $t  ${dir}/${name}.yaml ||
             panic "Unable to render '${t}'!"
-
-        # finds the respective documentation file copying as "README.md", on the same
-        # directory where the respective task is located
-#        echo "# Copying '${name}' documentation file '${doc}'..."
-#        cp -v -f ${doc} "${dir}/README.md" ||
-#            panic "Unable to copy '${doc}' into '${dir}'"
     done
 }
-
 release
