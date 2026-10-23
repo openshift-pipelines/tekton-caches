@@ -1,0 +1,169 @@
+name: release
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Triggers every Monday at 00:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  # Release branches older than this major.minor are never released
+  # automatically. Bump it as older series go out of support.
+  MIN_RELEASE_VERSION: 'v0.3'
+
+jobs:
+  # 1. Discover all active release branches dynamically
+  collect-branches:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_branches: ${{ steps.set-matrix.outputs.has_branches }}
+    steps:
+      - name: Fetch repository branches
+        id: set-matrix
+        run: |
+          # Fetch matching release branches via GitHub API
+          all_branches=$(gh api repos/${{ github.repository }}/branches --paginate -q '.[].name')
+          branches=$(printf '%s\n' "$all_branches" | grep -E '^release-v[0-9]+\.[0-9]+\.x$' || true)
+
+          echo "Found release branches:"
+          echo "${branches:-<none>}"
+
+          # Drop branches older than MIN_RELEASE_VERSION, compared as major.minor
+          MIN="${MIN_RELEASE_VERSION#v}"
+          MIN_MAJOR="${MIN%%.*}"
+          MIN_MINOR="${MIN#*.}"
+          MIN_MINOR="${MIN_MINOR%%.*}"
+
+          eligible=""
+          for branch in $branches; do
+            version="${branch#release-v}"
+            major="${version%%.*}"
+            minor="${version#*.}"
+            minor="${minor%%.*}"
+
+            if [ "$major" -gt "$MIN_MAJOR" ] || { [ "$major" -eq "$MIN_MAJOR" ] && [ "$minor" -ge "$MIN_MINOR" ]; }; then
+              eligible="${eligible}${branch}"$'\n'
+            else
+              echo "Skipping $branch: older than minimum release version $MIN_RELEASE_VERSION."
+            fi
+          done
+          branches=$(printf '%s' "$eligible")
+
+          if [ -z "$branches" ]; then
+            echo "No release branches at or above $MIN_RELEASE_VERSION."
+            echo "matrix={\"branch\":[]}" >> $GITHUB_OUTPUT
+            echo "has_branches=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Eligible release branches:"
+          echo "$branches"
+
+          # Format as JSON array for GitHub Actions matrix
+          json=$(jq -nc --argjson arr "$(printf '%s\n' "$branches" | jq -R . | jq -s .)" '{branch: $arr}')
+          echo "Matrix JSON: $json"
+
+          echo "matrix=$json" >> $GITHUB_OUTPUT
+          echo "has_branches=true" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 2. Process releases in parallel matrix jobs per branch
+  release:
+    needs: collect-branches
+    if: ${{ needs.collect-branches.outputs.has_branches == 'true' }}
+    permissions:
+      contents: write
+      packages: write
+    runs-on: ubuntu-latest
+    # Serialize per branch so two overlapping runs cannot compute and publish
+    # the same tag. Never cancel in flight: that could leave a pushed tag with
+    # a half-uploaded release behind it.
+    concurrency:
+      group: release-${{ matrix.branch }}
+      cancel-in-progress: false
+    strategy:
+      matrix: ${{ fromJson(needs.collect-branches.outputs.matrix) }}
+      fail-fast: false # Prevents failure in one branch runner from cancelling others
+
+    steps:
+      - name: Checkout targeted branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0 # Fetches full history and tags for accurate calculations
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Check for changes and execute release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --tags
+
+          BRANCH_NAME="${{ matrix.branch }}"
+          echo "Processing branch: $BRANCH_NAME"
+
+          # Extract version prefix (e.g., release-v0.4.x -> v0.4)
+          VERSION_PREFIX=$(echo "$BRANCH_NAME" | sed -n 's/.*release-\(v[0-9]*\.[0-9]*\).*/\1/p')
+
+          if [ -z "$VERSION_PREFIX" ]; then
+            echo "Skipping branch $BRANCH_NAME: Unrecognized branch format."
+            exit 0
+          fi
+
+          # Find the latest release tag reachable from HEAD on this specific branch
+          LATEST_TAG=$(git tag -l "${VERSION_PREFIX}.*" --merged HEAD --sort=-version:refname | head -n 1)
+
+          # Case 1: No previous tag exists for this release branch series -> create vX.Y.0
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_VERSION="${VERSION_PREFIX}.0"
+            echo "No tag found for $VERSION_PREFIX series on $BRANCH_NAME. Creating initial release: $NEW_VERSION"
+          else
+            # Case 2: Tag exists -> count commits added since that tag
+            COMMITS_COUNT=$(git rev-list "${LATEST_TAG}..HEAD" --count)
+
+            if [ "$COMMITS_COUNT" -eq 0 ]; then
+              if RELEASE_ASSETS=$(gh release view "$LATEST_TAG" --json assets \
+                --jq '.assets[].name') &&
+                printf '%s\n' "$RELEASE_ASSETS" | grep -Fxq 'catalog.yaml' &&
+                printf '%s\n' "$RELEASE_ASSETS" |
+                  grep -Fxq 'resources.tar.gz'; then
+                echo "Complete release found for $LATEST_TAG. Skipping."
+                exit 0
+              fi
+
+              NEW_VERSION="$LATEST_TAG"
+              echo "Resuming incomplete release $LATEST_TAG."
+            else
+              echo "Found $COMMITS_COUNT commit(s) since $LATEST_TAG."
+
+              # Increment patch version (e.g., v0.4.1 -> v0.4.2)
+              CLEAN_TAG="${LATEST_TAG#v}"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$CLEAN_TAG"
+              NEW_PATCH=$((PATCH + 1))
+              NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+            fi
+
+          fi
+
+          # Create the tag here rather than letting the Makefile do it, so it is
+          # annotated: an annotated tag carries its own tagger timestamp, whereas
+          # a lightweight tag is just a ref and GitHub falls back to displaying
+          # the date of the commit it points at. The Makefile's
+          # git-tag-release-version target is a no-op once the tag exists.
+          if [ "$NEW_VERSION" != "$LATEST_TAG" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+            git push origin "$NEW_VERSION"
+          fi
+
+          echo "Releasing $NEW_VERSION on $BRANCH_NAME..."
+          make RELEASE_VERSION=${NEW_VERSION} github-release

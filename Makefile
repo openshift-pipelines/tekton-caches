@@ -87,9 +87,11 @@ git-tag-release-version:
 # github-release
 .PHONY: github-release
 github-release: git-tag-release-version release
-	gh release create $(RELEASE_VERSION) --generate-notes && \
-	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/catalog.yaml && \
-	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/resources.tar.gz
+	if ! gh release view $(RELEASE_VERSION) >/dev/null 2>&1; then \
+		gh release create $(RELEASE_VERSION) --generate-notes; \
+	fi && \
+	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/catalog.yaml --clobber && \
+	gh release upload $(RELEASE_VERSION) $(RELEASE_DIR)/release/resources.tar.gz --clobber
 
 
 .PHONY: gitlint
