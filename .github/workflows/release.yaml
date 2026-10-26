@@ -91,7 +91,7 @@ jobs:
 
     steps:
       - name: Checkout targeted branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ matrix.branch }}
           fetch-depth: 0 # Fetches full history and tags for accurate calculations
