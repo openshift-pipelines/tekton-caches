@@ -10,9 +10,9 @@ require (
 	github.com/tektoncd/pipeline v1.17.1
 	gocloud.dev v0.47.0
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.37.1
-	k8s.io/apimachinery v0.37.1
-	k8s.io/client-go v0.37.1
+	k8s.io/api v0.37.2
+	k8s.io/apimachinery v0.37.2
+	k8s.io/client-go v0.37.2
 	knative.dev/pkg v0.0.0-20260622140654-39ebae2ee2dc
 	sigs.k8s.io/yaml v1.6.0
 )
