@@ -38,7 +38,7 @@ endif
 
 # GOFLAGS is cleared because this repo vendors its dependencies, and
 # "go install pkg@version" refuses to run under -mod=vendor.
-$(BIN)/golangci-lint-%: | $(BIN)
+$(BIN)/golangci-lint-%: go.mod | $(BIN)
 	@echo "Building golangci-lint $* with $$(go env GOVERSION) (go.mod targets go$(GO_MOD_VERSION))..."
 	@GOFLAGS= GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$*
 	@mv $(BIN)/golangci-lint $@
