@@ -18,7 +18,7 @@ func TestUploadCmdFlagsRegistered(t *testing.T) {
 		flags.TargetFlag,
 		flags.DigestFileFlag,
 		flags.FolderFlag,
-		flags.WorkingdirFlag,
+		flags.WorkingDirFlag,
 		flags.InsecureFlag,
 		flags.NamespaceFlag,
 		flags.PatternsFlag,
@@ -34,7 +34,7 @@ func TestFetchCmdFlagsRegistered(t *testing.T) {
 	for _, name := range []string{
 		flags.SourceFlag,
 		flags.FolderFlag,
-		flags.WorkingdirFlag,
+		flags.WorkingDirFlag,
 		flags.DigestFlag,
 		flags.InsecureFlag,
 		flags.NamespaceFlag,
@@ -48,26 +48,26 @@ func TestUploadCmdNoMatchingFiles(t *testing.T) {
 	cmd := uploadCmd()
 	cmd.SetOut(os.Stderr)
 	cmd.SetArgs([]string{
-		"--target", "oci://example.com/cache/go",
-		"--folder", t.TempDir(),
-		"--workingdir", t.TempDir(),
-		"--digestFile", filepath.Join(t.TempDir(), "digest.txt"),
-		"--pattern", "**/nothing-matches-this",
+		"--" + flags.TargetFlag, "oci://example.com/cache/go",
+		"--" + flags.FolderFlag, t.TempDir(),
+		"--" + flags.WorkingDirFlag, t.TempDir(),
+		"--" + flags.DigestFileFlag, filepath.Join(t.TempDir(), "digest.txt"),
+		"--" + flags.PatternsFlag, "**/nothing-matches-this",
 	})
 	err := cmd.Execute()
 	assert.ErrorContains(t, err, "didn't match any files")
 }
 
-// TestUploadCmdDigestFileOptional makes sure omitting --digestFile is accepted
+// TestUploadCmdDigestFileOptional makes sure omitting --digest-file is accepted
 // (the command must get past flag parsing before it fails on anything else).
 func TestUploadCmdDigestFileOptional(t *testing.T) {
 	cmd := uploadCmd()
 	cmd.SetOut(os.Stderr)
 	cmd.SetArgs([]string{
-		"--target", "oci://example.com/cache/go",
-		"--folder", t.TempDir(),
-		"--workingdir", t.TempDir(),
-		"--pattern", "**/nothing-matches-this",
+		"--" + flags.TargetFlag, "oci://example.com/cache/go",
+		"--" + flags.FolderFlag, t.TempDir(),
+		"--" + flags.WorkingDirFlag, t.TempDir(),
+		"--" + flags.PatternsFlag, "**/nothing-matches-this",
 	})
 	err := cmd.Execute()
 	assert.ErrorContains(t, err, "didn't match any files")

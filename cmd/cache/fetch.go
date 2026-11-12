@@ -25,7 +25,7 @@ func fetchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			workingdir, err := cmd.Flags().GetString(flags.WorkingdirFlag)
+			workingdir, err := cmd.Flags().GetString(flags.WorkingDirFlag)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func fetchCmd() *cobra.Command {
 	cmd.Flags().StringArray(flags.PatternsFlag, []string{}, "Files pattern to compute the hash from")
 	cmd.Flags().String(flags.SourceFlag, "", "Cache source reference")
 	cmd.Flags().String(flags.FolderFlag, "", "Folder where to extract the content of the cache if it exists")
-	cmd.Flags().String(flags.WorkingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
+	cmd.Flags().String(flags.WorkingDirFlag, ".", "Working dir from where the files patterns needs to be taken")
 	cmd.Flags().String(flags.DigestFlag, "", "expectedDigest to validate downloaded cache archive")
 	cmd.Flags().String(flags.NamespaceFlag, "", flags.NamespaceUsage)
 	cmd.Flags().Bool(flags.InsecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")

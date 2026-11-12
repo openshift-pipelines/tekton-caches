@@ -145,5 +145,5 @@ spec:
                         --folder ${PARAM_CACHE_PATH} \
                         --insecure ${PARAM_INSECURE} \
                         --namespace "${POD_NAMESPACE}" \
-                        --digestFile "$(step.results.digest.path)" \
+                        --digest-file "$(step.results.digest.path)" \
                         --workingdir ${PARAM_WORKING_DIR}
