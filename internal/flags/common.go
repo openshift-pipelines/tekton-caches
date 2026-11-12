@@ -9,8 +9,16 @@ import (
 )
 
 var (
-	PatternsFlag  = "pattern"
-	NamespaceFlag = "namespace"
+	PatternsFlag   = "pattern"
+	NamespaceFlag  = "namespace"
+	TargetFlag     = "target"
+	DigestFileFlag = "digestFile"
+	WorkingdirFlag = "workingdir"
+	FilesFlag      = "hashfiles"
+	SourceFlag     = "source"
+	FolderFlag     = "folder"
+	InsecureFlag   = "insecure"
+	DigestFlag     = "digest"
 )
 
 // NamespaceUsage is the help text of the --namespace flag, shared by the fetch
