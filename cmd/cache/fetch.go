@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"os"
+	"log"
 	"path/filepath"
 
 	"github.com/moby/patternmatcher"
@@ -13,32 +13,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	workingdirFlag = "workingdir"
-	filesFlag      = "hashfiles"
-	sourceFlag     = "source"
-	folderFlag     = "folder"
-	insecureFlag   = "insecure"
-	digestFlag     = "digest"
-)
-
 func fetchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "fetch",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			target, err := cmd.Flags().GetString(sourceFlag)
+			target, err := cmd.Flags().GetString(flags.SourceFlag)
 			if err != nil {
 				return err
 			}
-			folder, err := cmd.Flags().GetString(folderFlag)
+			folder, err := cmd.Flags().GetString(flags.FolderFlag)
 			if err != nil {
 				return err
 			}
-			workingdir, err := cmd.Flags().GetString(workingdirFlag)
+			workingdir, err := cmd.Flags().GetString(flags.WorkingDirFlag)
 			if err != nil {
 				return err
 			}
-			digest, err := cmd.Flags().GetString(digestFlag)
+			digest, err := cmd.Flags().GetString(flags.DigestFlag)
 			if err != nil {
 				return err
 			}
@@ -53,7 +44,7 @@ func fetchCmd() *cobra.Command {
 			matches := glob(workingdir, func(s string) bool {
 				m, err := patternmatcher.Matches(s, patterns)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "error trying to match files with '%v': %s", patterns, err)
+					log.Printf("error trying to match files with '%v': %s", patterns, err)
 					return false
 				}
 				return m
@@ -61,30 +52,30 @@ func fetchCmd() *cobra.Command {
 			if len(matches) == 0 {
 				return fmt.Errorf("didn't match any files with %v", patterns)
 			}
-			fmt.Fprintf(os.Stderr, "Matched the following files: %v\n", matches)
+			log.Printf("Matched the following files: %v\n", matches)
 			hashStr, err := cacheutils.Compute(namespace, workingdir, matches)
 			if err != nil {
 				return err
 			}
 
-			insecure, err := cmd.Flags().GetBool(insecureFlag)
+			insecure, err := cmd.Flags().GetBool(flags.InsecureFlag)
 			if err != nil {
 				return err
 			}
 			// FIXME: Wrap the error.
 			// If not, warn and do not fail
-			// fmt.Fprintf(os.Stderr, "Repository %s doesn't exists or isn't reachable, fetching no cache.\n", cacheImageRef)
+			// log.Printf("Repository %s doesn't exists or isn't reachable, fetching no cache.\n", cacheImageRef)
 			return fetch.Fetch(cmd.Context(), hashStr, target, folder, digest, insecure)
 		},
 	}
 
 	cmd.Flags().StringArray(flags.PatternsFlag, []string{}, "Files pattern to compute the hash from")
-	cmd.Flags().String(sourceFlag, "", "Cache source reference")
-	cmd.Flags().String(folderFlag, "", "Folder where to extract the content of the cache if it exists")
-	cmd.Flags().String(workingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
-	cmd.Flags().String(digestFlag, "", "expectedDigest to validate downloaded cache archive")
+	cmd.Flags().String(flags.SourceFlag, "", "Cache source reference")
+	cmd.Flags().String(flags.FolderFlag, "", "Folder where to extract the content of the cache if it exists")
+	cmd.Flags().String(flags.WorkingDirFlag, ".", "Working dir from where the files patterns needs to be taken")
+	cmd.Flags().String(flags.DigestFlag, "", "expectedDigest to validate downloaded cache archive")
 	cmd.Flags().String(flags.NamespaceFlag, "", flags.NamespaceUsage)
-	cmd.Flags().Bool(insecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")
+	cmd.Flags().Bool(flags.InsecureFlag, false, "Whether to use insecure transport or not to upload to insecure registry")
 	return cmd
 }
 
@@ -96,7 +87,7 @@ func glob(root string, fn func(string) bool) []string {
 		}
 		return nil
 	}); err != nil {
-		fmt.Fprintf(os.Stderr, "error walking the path %q: %v\n", root, err)
+		log.Printf("error walking the path %q: %v\n", root, err)
 	}
 	return files
 }
