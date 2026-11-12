@@ -24,7 +24,7 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			workingdir, err := cmd.Flags().GetString(flags.WorkingdirFlag)
+			workingdir, err := cmd.Flags().GetString(flags.WorkingDirFlag)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func uploadCmd() *cobra.Command {
 	cmd.Flags().StringArray(flags.PatternsFlag, []string{}, "Files pattern to compute the hash from")
 	cmd.Flags().String(flags.TargetFlag, "", "Cache target reference")
 	cmd.Flags().String(flags.FolderFlag, "", "Folder where to extract the content of the cache if it exists")
-	cmd.Flags().String(flags.WorkingdirFlag, ".", "Working dir from where the files patterns needs to be taken")
+	cmd.Flags().String(flags.WorkingDirFlag, ".", "Working dir from where the files patterns needs to be taken")
 	cmd.Flags().String(flags.NamespaceFlag, "", flags.NamespaceUsage)
 	cmd.Flags().String(flags.DigestFileFlag, "", "File to write the digest of the uploaded cache to. If empty, the digest is not written")
 	cmd.Flags().Bool(flags.InsecureFlag, false, "Wether to use insecure transport or not to upload to insecure registry")
