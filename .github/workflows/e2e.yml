@@ -51,6 +51,7 @@ jobs:
           pipeline_version: latest
           feature_flags: '{"enable-step-actions": "true"}'
           setup_registry: false
+          patch_etc_hosts: false
       - name: tests
         run: |
           set -euxfo pipefail
