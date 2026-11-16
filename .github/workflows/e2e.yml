@@ -23,7 +23,8 @@ jobs:
 
   e2e:
     name: e2e tests
-    runs-on: ubuntu-latest
+    # setup-tektoncd's CLI installer requires sudo --preserve-env.
+    runs-on: ubuntu-24.04
     env:
         KUBECONFIG: /home/runner/.kube/config.kind
     steps:
@@ -32,7 +33,7 @@ jobs:
       - uses: azure/setup-helm@v4
       - uses: actions/setup-go@41dfa10bad2bb2ae585af6ee5bb4d7d973ad74ed # v5.1.0
         with:
-          go-version: "1.22"
+          go-version-file: go.mod
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
@@ -50,7 +51,8 @@ jobs:
         with:
           pipeline_version: latest
           feature_flags: '{"enable-step-actions": "true"}'
-          setup_registry: false
+          setup_registry: "false"
+          patch_etc_hosts: "false"
       - name: tests
         run: |
           set -euxfo pipefail
