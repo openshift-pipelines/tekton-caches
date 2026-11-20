@@ -3,7 +3,6 @@ E2E_TAG ?= e2e
 
 REGISTRY_NAME ?= registry
 
-GOLANGCI_LINT=golangci-lint
 TIMEOUT_UNIT = 20m
 GOFUMPT=gofumpt
 TEKTON_VERSION ?= $(shell go list -m -f "{{ .Version }}" github.com/tektoncd/pipeline)
@@ -18,6 +17,31 @@ $(BIN):
 CATALOGCD = $(or ${CATALOGCD_BIN},${CATALOGCD_BIN},$(BIN)/catalog-cd)
 $(BIN)/catalog-cd: $(BIN)
 	curl -fsL https://github.com/openshift-pipelines/catalog-cd/releases/download/v0.3.0/catalog-cd_0.3.0_linux_x86_64.tar.gz | tar xzf - -C $(BIN) catalog-cd
+
+# The go version this module targets, read straight from go.mod.
+GO_MOD_VERSION = $(shell go list -m -f '{{.GoVersion}}')
+
+# golangci-lint refuses to load its config when it was built with a go
+# toolchain older than the one go.mod targets, and an older release can also
+# fail to decode export data produced by a newer toolchain. A published binary
+# is built with whichever go version that release used, so we cannot pick one
+# by go version -- instead we build golangci-lint from source with this repo's
+# own toolchain, which makes it track GO_MOD_VERSION automatically.
+#
+# Override GOLANGCI_LINT to use an installation you manage yourself.
+GOLANGCI_LINT_VERSION ?= v2.15.0
+ifndef GOLANGCI_LINT
+GOLANGCI_LINT = $(BIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+# Only install when we own the binary; an override is the caller's to provide.
+GOLANGCI_LINT_INSTALL = $(GOLANGCI_LINT)
+endif
+
+# GOFLAGS is cleared because this repo vendors its dependencies, and
+# "go install pkg@version" refuses to run under -mod=vendor.
+$(BIN)/golangci-lint-%: go.mod | $(BIN)
+	@echo "Building golangci-lint $* with $$(go env GOVERSION) (go.mod targets go$(GO_MOD_VERSION))..."
+	@GOFLAGS= GOBIN=$(BIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$*
+	@mv $(BIN)/golangci-lint $@
 
 
 
@@ -39,7 +63,13 @@ e2e-docker: ## run e2e tests with a docker registry started
 
 PKG ?= ./...
 lint: lint-go
-lint-go: ## runs go linter on all go files
+lint-go: $(GOLANGCI_LINT_INSTALL) ## runs go linter on all go files
+	@built=$$($(GOLANGCI_LINT) version 2>/dev/null | sed -n 's/.*built with go\([0-9.]*\).*/\1/p'); \
+	if [ -n "$$built" ] && [ "$$(printf '%s\n%s\n' "$(GO_MOD_VERSION)" "$$built" | sort -V | tail -1)" != "$$built" ]; then \
+		echo "$(GOLANGCI_LINT) was built with go$$built, but go.mod targets go$(GO_MOD_VERSION)."; \
+		echo "It cannot load the config. Unset GOLANGCI_LINT to build a compatible one."; \
+		exit 1; \
+	fi
 	@echo "Linting go files..."
 	@$(GOLANGCI_LINT) run $(PKG) --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
