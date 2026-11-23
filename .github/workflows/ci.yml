@@ -19,11 +19,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.25"
+          go-version-file: go.mod
 
-      - uses: alexellis/arkade-get@master
+      # make lint builds golangci-lint from source with this repo's toolchain,
+      # so cache it between runs rather than rebuilding every time.
+      - name: Cache golangci-lint
+        uses: actions/cache@v4
         with:
-          golangci-lint: latest
+          path: .bin
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
+
       - name: Run linters
         run: |
           make lint
