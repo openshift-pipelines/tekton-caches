@@ -41,8 +41,9 @@ func TestOCIUpload(t *testing.T) {
 	hash, err := cacheutils.Compute("", tmpdir.Path(), []string{filepath.Join(tmpdir.Path(), "go.mod")})
 	assert.Equal(t, hash, hashOfGoModContent)
 	assert.NilError(t, err)
-	assert.NilError(t, upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true))
-	digest := readFile("digest.txt")
+	digest, err := upload.Upload(ctx, hash, regTarget, tmpdir.Path(), true)
+	assert.NilError(t, err)
+	assert.Assert(t, digest != "", "upload should return a non-empty digest")
 	assert.NilError(t, fetch.Fetch(ctx, hash, regTarget, tmpdir.Path(), digest, false))
 	assert.NilError(t, fetch.Fetch(ctx, "unknown", regTarget, tmpdir.Path(), digest, false)) // should not error on unknown hash
 }
@@ -108,14 +109,4 @@ func TestCacheOCI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error deleting pipelinerun")
 	}
-}
-
-func readFile(file string) string {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return ""
-	}
-
-	// Convert bytes to string and print
-	return string(data)
 }
