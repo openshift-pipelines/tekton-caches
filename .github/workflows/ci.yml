@@ -24,7 +24,7 @@ jobs:
       # make lint builds golangci-lint from source with this repo's toolchain,
       # so cache it between runs rather than rebuilding every time.
       - name: Cache golangci-lint
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .bin
           key: golangci-lint-${{ runner.os }}-${{ hashFiles('Makefile', 'go.mod') }}
