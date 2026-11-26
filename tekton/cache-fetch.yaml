@@ -1,9 +1,9 @@
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: StepAction
 metadata:
   name: cache-fetch
   annotations:
-    tekton.dev/pipelines.minVersion: "0.56.0"
+    tekton.dev/pipelines.minVersion: "0.62.0"
     tekton.dev/tags: "cache"
 spec:
   params:
